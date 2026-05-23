@@ -1,0 +1,875 @@
+#include "includes.hpp"
+
+bool repl = 0;
+
+Token next(std::vector<Token>& tokens) {
+  if (tokens.empty()) return Token();
+  Token token = tokens.back();
+  tokens.pop_back();
+  return token;
+}
+
+Token peek(std::vector<Token>& tokens) {
+  if (tokens.empty()) return Token();
+  return tokens.back();
+}
+
+short prefix(Symbol op) {
+  switch (op) {
+    case Symbol::Add:
+    case Symbol::Sub:
+    case Symbol::Bnot:
+    case Symbol::Lnot:
+         return 0x0017;
+    default:
+      return 0;
+  }
+}
+
+short infix(Symbol op) {
+  switch (op) {
+    case Symbol::Pow:
+      return 0x1615;
+    case Symbol::Mul:
+    case Symbol::Div:
+    case Symbol::Mod:
+      return 0x1314;
+    case Symbol::Add:
+    case Symbol::Sub:
+      return 0x1112;
+    case Symbol::Shl:
+    case Symbol::Shr:
+      return 0x0f10;
+    case Symbol::Lt:
+    case Symbol::Le:
+    case Symbol::Gt:
+    case Symbol::Ge:
+      return 0x0d0e;
+    case Symbol::Ne:
+    case Symbol::Eq:
+      return 0x0b0c;
+    case Symbol::Band: return 0x090a;
+    case Symbol::Bxor: return 0x0708;
+    case Symbol::Bor: return 0x0506;
+    case Symbol::Land: return 0x0304;
+    case Symbol::Lor: return 0x0102;
+    default:
+      return 0;
+  }
+}
+
+std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "time", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
+size_t stack_size = 0, stack_max_size = 0;
+
+void expr(std::vector<Token>&, std::vector<Op>&, short);
+
+void expr_stmt(std::vector<Token>& tokens, std::vector<Op>& output) {
+  if (peek(tokens).type != TokenType::Symbol) {
+    expr(tokens, output, 0);
+  } else if (peek(tokens).val.sym == Symbol::Lbkl) {
+    next(tokens);
+    while (1) {
+      if (peek(tokens).val.sym == Symbol::Rbkl) break;
+      expr_stmt(tokens, output);
+      Token token = peek(tokens);
+      if (token.type == TokenType::Null)
+        if (repl) throw 1;
+        else throw "SyntaxError: '{' not closed, expect '}'";
+      if (token.val.sym != Symbol::Rbkl && token.val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
+      while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
+      output.emplace_back(OpType::Pop);
+      stack_size--;
+    }
+    next(tokens);
+    if (peek(tokens).type != TokenType::Null && (peek(tokens).type != TokenType::Symbol || peek(tokens).val.sym != Symbol::Rbkl))
+      expr_stmt(tokens, output);
+  } else if (peek(tokens).val.sym == Symbol::If) {
+    std::vector<size_t> jmps_to_end;
+    L1:
+    next(tokens);
+    expr(tokens, output, 0);
+    if (peek(tokens).type == TokenType::Null)
+      if (repl) throw 1;
+      else throw "SyntaxError: if-condition: expect '{'";
+    if (next(tokens).val.sym != Symbol::Lbkl) throw "SyntaxError: bad operator";
+    size_t jmp_index = output.size();
+    output.emplace_back(OpType::Jiff);
+    stack_size--;
+    while (1) {
+      if (peek(tokens).val.sym == Symbol::Rbkl) break;
+      expr_stmt(tokens, output);
+      Token token = peek(tokens);
+      if (token.type == TokenType::Null)
+        if (repl) throw 1;
+        else throw "SyntaxError: '{' not closed, expect '}'";
+      if (token.val.sym != Symbol::Rbkl && token.val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
+      while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
+      output.emplace_back(OpType::Pop);
+      stack_size--;
+    }
+    next(tokens);
+    if (peek(tokens).type == TokenType::Symbol)
+    if (peek(tokens).val.sym == Symbol::Elif) {
+      jmps_to_end.push_back(output.size());
+      output.emplace_back(OpType::Jmp);
+      output[jmp_index].val.num = output.size() - jmp_index;
+      goto L1;
+    } else if (peek(tokens).val.sym == Symbol::Else) {
+      jmps_to_end.push_back(output.size());
+      output.emplace_back(OpType::Jmp);
+      output[jmp_index].val.num = output.size() - jmp_index;
+      next(tokens);
+      if (peek(tokens).type == TokenType::Null && repl) throw 1;
+      if (peek(tokens).type != TokenType::Symbol || peek(tokens).val.sym != Symbol::Lbkl)
+        throw "SyntaxError: bad operator";
+      next(tokens);
+      while (1) {
+        if (peek(tokens).val.sym == Symbol::Rbkl) break;
+        expr_stmt(tokens, output);
+        Token token = peek(tokens);
+        if (token.type == TokenType::Null)
+          if (repl) throw 1;
+          else throw "SyntaxError: '{' not closed, expect '}'";
+        if (token.val.sym != Symbol::Rbkl && token.val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
+        while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
+        output.emplace_back(OpType::Pop);
+        stack_size--;
+      }
+      next(tokens);
+    } else output[jmp_index].val.num = output.size() - jmp_index;
+    else output[jmp_index].val.num = output.size() - jmp_index;
+    for (size_t i : jmps_to_end)
+      output[i].val.num = output.size() - i;
+    if (peek(tokens).type != TokenType::Null && (peek(tokens).type != TokenType::Symbol || peek(tokens).val.sym != Symbol::Rbkl))
+      expr_stmt(tokens, output);
+  } else if (peek(tokens).val.sym == Symbol::While) {
+    next(tokens);
+    std::vector<Op> cond;
+    size_t cond_index = output.size();
+    expr(tokens, cond, 0);
+    if (peek(tokens).type == TokenType::Null)
+      if (repl) throw 1;
+      else throw "SyntaxError: while-condition: expect '{'";
+    if (next(tokens).val.sym != Symbol::Lbkl) throw "SyntaxError: bad operator";
+    size_t body_index = output.size();
+    output.emplace_back(OpType::Jmp);
+
+    while (1) {
+      if (peek(tokens).val.sym == Symbol::Rbkl) break;
+      expr_stmt(tokens, output);
+      Token token = peek(tokens);
+      if (token.type == TokenType::Null)
+        if (repl) throw 1;
+        else throw "SyntaxError: '{' not closed, expect '}'";
+      if (token.val.sym != Symbol::Rbkl && token.val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
+      while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
+      output.emplace_back(OpType::Pop);
+      stack_size--;
+    }
+    next(tokens);
+
+    output[body_index].val.num = output.size() - body_index;
+    output.insert(output.end(), cond.begin(), cond.end());
+    output.emplace_back(OpType::Jift, (int)cond_index - (int)output.size() + 1);
+    stack_size--;
+    if (peek(tokens).type != TokenType::Null && (peek(tokens).type != TokenType::Symbol || peek(tokens).val.sym != Symbol::Rbkl))
+      expr_stmt(tokens, output);
+  } else {
+    expr(tokens, output, 0);
+  }
+}
+
+void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp) {
+  Token token = next(tokens);
+  switch (token.type) {
+    case TokenType::Null:
+      if (repl) throw 1;
+      else throw "SyntaxError: statement not terminated, expect any value";
+
+      case TokenType::Atom:
+      output.emplace_back(token.val.atom);
+      if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+      break;
+
+    case TokenType::Symbol:
+      switch (token.val.sym) {
+        case Symbol::Lpar:
+          expr(tokens, output, 0);
+          if (peek(tokens).type == TokenType::Null)
+            if (repl) throw 1;
+            else throw "SyntaxError: '(' not closed, expect ')'";
+          if (next(tokens).val.sym != Symbol::Rpar) throw "SyntaxError: bad operator";
+          break;
+
+        case Symbol::Lbrk: {
+          int count = 0;
+          while (1) {
+            if (peek(tokens).val.sym == Symbol::Rbrk) {
+              next(tokens);
+              break;
+            }
+            expr(tokens, output, 0);
+            count++;
+            Token token = next(tokens);
+            if (token.type == TokenType::Null)
+              if (repl) throw 1;
+              else throw "SyntaxError: '[' not closed, expect ']'";
+            if (token.val.sym == Symbol::Rbrk) break;
+            if (token.val.sym != Symbol::Sep) throw "SyntaxError: bad operator";
+          }
+          output.emplace_back(OpType::List, count);
+          if (stack_max_size < (stack_size+=1-count)) stack_max_size = stack_size;
+          break;
+        }
+
+        default:
+          short bp = prefix(token.val.sym);
+          if (!bp) throw "SyntaxError: bad operator, expect prefix operator";
+          if (token.val.sym == Symbol::Add || token.val.sym == Symbol::Sub) {
+            output.emplace_back(Atom{(long long)0});
+            if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+          }
+          expr(tokens, output, bp&255);
+          output.emplace_back((OpType)(char)token.val.sym);
+          stack_size--;
+      }
+      break;
+
+    case TokenType::Id:
+      std::vector<std::string>::iterator it = std::find(names.begin(), names.end(), token.val.id);
+      size_t index;
+      if (it != names.end())
+        index = it - names.begin();
+      else {
+        names.emplace_back(token.val.id);
+        index = names.size() - 1;
+      }
+      if (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Asg) {
+        next(tokens);
+        expr(tokens, output, 0);
+        output.emplace_back(OpType::Asg, index);
+      } else {
+        output.emplace_back(OpType::Var, index);
+        if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+      }
+      break;
+
+  }
+
+  while (1) {
+    Token token = peek(tokens);
+    if (token.type == TokenType::Null) break;
+    if (token.type != TokenType::Symbol) throw "SyntaxError: bad operator, expect a value";
+    switch (token.val.sym) {
+      case Symbol::Lpar: {
+        next(tokens);
+        int count = 0;
+        while (1) {
+          if (peek(tokens).val.sym == Symbol::Rpar) {
+            next(tokens);
+            break;
+          }
+          expr(tokens, output, 0);
+          count++;
+          Token token = next(tokens);
+          if (token.type == TokenType::Null)
+            if (repl) throw 1;
+            else throw "SyntaxError: '(' not closed, expect ')'";
+          if (token.val.sym == Symbol::Rpar) break;
+          if (token.val.sym != Symbol::Sep) throw "SyntaxError: bad operator";
+        }
+        output.emplace_back(OpType::Call, count);
+        stack_size -= count;
+        break;
+      }
+      case Symbol::Lbrk:
+        next(tokens);
+        expr(tokens, output, 0);
+        if (peek(tokens).type == TokenType::Null)
+          if (repl) throw 1;
+          else throw "SyntaxError: '[' not closed, expect ']'";
+        if (next(tokens).val.sym != Symbol::Rbrk) throw "SyntaxError: bad operator";
+        // TODO: AsgInd
+        output.emplace_back(OpType::Ind);
+        stack_size--;
+        break;
+      case Symbol::Qst: {
+        if (0 < min_bp) return;
+        next(tokens);
+        size_t index = output.size();
+        output.emplace_back(OpType::Jiff);
+        stack_size--;
+        expr(tokens, output, 0);
+        if (peek(tokens).type == TokenType::Null)
+          if (repl) throw 1;
+          else throw "SyntaxError: '?' not closed, expect ':'";
+        size_t index2 = output.size();
+        output.emplace_back(OpType::Jmp);
+        stack_size--;
+        output[index].val.num = output.size() - index;
+        if (next(tokens).val.sym != Symbol::Cmn) throw "SyntaxError: bad operator";
+        expr(tokens, output, 0);
+        output[index2].val.num = output.size() - index2;
+        break;
+      }
+      default:
+      short bp = infix(token.val.sym);
+      if (!bp) return;
+      if (bp>>8 < min_bp) return;
+      next(tokens);
+      if (token.val.sym == Symbol::Land || token.val.sym == Symbol::Lor) {
+        size_t index = output.size();
+        output.emplace_back(token.val.sym == Symbol::Land ? OpType::Land : OpType::Lor);
+        stack_size--;
+        expr(tokens, output, bp&255);
+        output[index].val.num = output.size() - index;
+        continue;
+      }
+      expr(tokens, output, bp&255);
+      output.emplace_back((OpType)(char)token.val.sym);
+      stack_size--;
+    }
+  }
+}
+
+std::string fmt_op(Op op) {
+  switch (op.type) {
+    case OpType::Bnot: return "~";
+    case OpType::Lnot: return "!";
+    case OpType::Add: return "+";
+    case OpType::Sub: return "-";
+    case OpType::Mul: return "*";
+    case OpType::Div: return "/";
+    case OpType::Mod: return "%";
+    case OpType::Pow: return "**";
+    case OpType::Shl: return "<<";
+    case OpType::Shr: return ">>";
+    case OpType::Lt: return "<";
+    case OpType::Le: return "<=";
+    case OpType::Gt: return ">";
+    case OpType::Ge: return ">=";
+    case OpType::Ne: return "!=";
+    case OpType::Eq: return "==";
+    case OpType::Band: return "&";
+    case OpType::Bxor: return "^";
+    case OpType::Bor: return "|";
+    case OpType::Ind: return "[]";
+    case OpType::AsgInd: return "[]=";
+    case OpType::End: return "END";
+    case OpType::Pop: return "POP";
+    case OpType::Atom: return tostr(op.val.atom);
+    case OpType::Var: return names[op.val.num];
+    case OpType::Asg: return "=," + names[op.val.num];
+    case OpType::Call: return "CALL," + std::to_string(op.val.num);
+    case OpType::List: return "LIST," + std::to_string(op.val.num);
+    case OpType::Jmp: return "JMP," + std::to_string(op.val.num);
+    case OpType::Jift: return "JIFT," + std::to_string(op.val.num);
+    case OpType::Jiff: return "JIFF," + std::to_string(op.val.num);
+    case OpType::Land: return "&&," + std::to_string(op.val.num);
+    case OpType::Lor: return "||," + std::to_string(op.val.num);
+  }
+  return "";
+}
+
+std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_time, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
+
+void eval(const std::vector<Op>& cmds, Atom *stack) {
+  Atom *pvar = vars.data();
+  Atom *stack_top = stack;
+  
+  for (const Op *it = cmds.data();; it++) {
+    L1:
+    Op cmd = *it;
+    switch (cmd.type) {
+      case OpType::End:
+        return;
+      case OpType::Pop:
+        (--stack_top)->~Atom();
+        break;
+      case OpType::Atom:
+        new (stack_top++) Atom(cmd.val.atom);
+        break;
+      case OpType::Var:
+        if (pvar[cmd.val.num].type == AtomType::None) throw "NameError: variable not found";
+        new (stack_top++) Atom(pvar[cmd.val.num]);
+        break;
+      case OpType::Asg:
+        pvar[cmd.val.num] = stack_top[-1];
+        break;
+      case OpType::Call: {
+        Atom *atom = stack_top - cmd.val.num - 1;
+        if (atom->type != AtomType::Bltfn) throw "TypeError: bad value type for function call";
+        atom->val.bltfn(cmd.val.num, atom + 1);
+        for (Atom *a = atom + 1; a != stack_top; a++) a->~Atom();
+        stack_top = atom + 1;
+        break;
+      }
+      case OpType::List: {
+        std::vector<Atom> list;
+        std::move(stack_top - cmd.val.num, stack_top, std::back_inserter(list));
+        // for (Atom *a = stack_top - cmd.val.num; a != stack_top; a++) a->~Atom();
+        stack_top = stack_top - cmd.val.num;
+        new (stack_top++) Atom(std::move(list));
+        break;
+      }
+      case OpType::Jmp:
+        it += cmd.val.num;
+        goto L1;
+      case OpType::Jift:
+        --stack_top;
+        // if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+        //   it += cmd.val.num;
+        //   stack_top->~Atom();
+        //   goto L1;
+        // }
+        // stack_top->~Atom();
+        if (stack_top->type == AtomType::I64) {
+          if (stack_top->val.i64) {
+            it += cmd.val.num;
+            goto L1;
+          }
+          break;
+        }
+        if (tobool(*stack_top)) {
+          it += cmd.val.num;
+          stack_top->~Atom();
+          goto L1;
+        }
+        stack_top->~Atom();
+        break;
+      case OpType::Jiff:
+        --stack_top;
+        // if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+        //   stack_top->~Atom();
+        //   break;
+        // }
+        // it += cmd.val.num;
+        // stack_top->~Atom();
+        // goto L1;
+        if (stack_top->type == AtomType::I64) {
+          if (stack_top->val.i64) break;
+          it += cmd.val.num;
+          goto L1;
+        }
+        if (tobool(*stack_top)) {
+          stack_top->~Atom();
+          break;
+        }
+        it += cmd.val.num;
+        stack_top->~Atom();
+        goto L1;
+      case OpType::Land:
+        --stack_top;
+        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+          stack_top->~Atom();
+          break;
+        }
+        stack_top++;
+        it += cmd.val.num;
+        goto L1;
+      case OpType::Lor: {
+        --stack_top;
+        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+          stack_top->~Atom();
+          it += cmd.val.num;
+          goto L1;
+        }
+        stack_top->~Atom();
+        break;
+      }
+      case OpType::Lnot: {
+        Atom *a = stack_top - 1;
+        switch (a->type) {
+          case AtomType::Null:
+            a->type = AtomType::I64;
+            a->val.i64 = 1;
+            break;
+          case AtomType::I64:
+            a->val.i64 = !a->val.i64;
+            break;
+          case AtomType::F64:
+            a->type = AtomType::I64;
+            a->val.i64 = !a->val.f64;
+            break;
+          case AtomType::Str: {
+            bool b = a->val.str.empty();
+            a->val.str.std::string::~string();
+            a->type = AtomType::I64;
+            a->val.i64 = b;
+            break;
+          }
+          case AtomType::List: {
+            bool b = a->val.list.empty();
+            a->val.list.std::vector<Atom>::~vector();
+            a->type = AtomType::I64;
+            a->val.i64 = b;
+            break;
+          }
+          case AtomType::Bltfn:
+            a->type = AtomType::I64;
+            a->val.i64 = 1;
+            break;
+          default: throw "TypeError: bad value type for operator '!'";
+        }
+        break;
+      }
+      case OpType::Bnot: {
+        Atom* a = stack_top - 1;
+        if (a->type == AtomType::I64) a->val.i64 = ~a->val.i64;
+        else throw "TypeError: bad value type for operator '~'";
+        break;
+      }
+      case OpType::Pow: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = pow(a->val.i64, b->val.i64);
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = pow(a->val.i64, b->val.f64);
+          else throw "TypeError: bad value type for operator '**'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 = pow(a->val.f64, b->val.i64);
+          else if (b->type == AtomType::F64)
+            a->val.f64 = pow(a->val.f64, b->val.f64);
+          else throw "TypeError: bad value type for operator '**'";
+        else throw "TypeError: bad value type for operator '**'";
+        break;
+      }
+      case OpType::Mul: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 *= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = a->val.i64 * b->val.f64;
+          else throw "TypeError: bad value type for operator '*'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 *= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.f64 *= b->val.f64;
+          else throw "TypeError: bad value type for operator '*'";
+        else throw "TypeError: bad value type for operator '*'";
+        break;
+      }
+      case OpType::Div: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 /= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = a->val.i64 / b->val.f64;
+          else throw "TypeError: bad value type for operator '/'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 /= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.f64 /= b->val.f64;
+        else throw "TypeError: bad value type for operator '/'";
+        break;
+      }
+      case OpType::Mod: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 % b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = fmod(a->val.i64, b->val.f64);
+          else throw "TypeError: bad value type for operator '%'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 = fmod(a->val.f64, b->val.i64);
+          else if (b->type == AtomType::F64)
+            a->val.f64 = fmod(a->val.f64, b->val.f64);
+          else throw "TypeError: bad value type for operator '%'";
+        else throw "TypeError: bad value type for operator '%'";
+        break;
+      }
+      case OpType::Add: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 += b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = a->val.i64 + b->val.f64;
+          else throw "TypeError: bad value type for operator '+'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 += b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.f64 += b->val.f64;
+          else throw "TypeError: bad value type for operator '+'";
+        else if (a->type == AtomType::Str && b->type == AtomType::Str) {a->val.str += b->val.str;
+          b->val.str.std::string::~string();
+        }
+        else if (a->type == AtomType::List && b->type == AtomType::List) {
+          a->val.list.insert(a->val.list.end(), std::make_move_iterator(b->val.list.begin()), std::make_move_iterator(b->val.list.end()));
+          b->val.list.std::vector<Atom>::~vector();
+        }
+        else throw "TypeError: bad value type for operator '+'";
+        break;
+      }
+      case OpType::Sub: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 -= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::F64,
+            a->val.f64 = a->val.i64 - b->val.f64;
+          else throw "TypeError: bad value type for operator '-'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.f64 -= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.f64 -= b->val.f64;
+          else throw "TypeError: bad value type for operator '-'";
+        else throw "TypeError: bad value type for operator '-'";
+        break;
+      }
+      case OpType::Shl: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64 && b->type == AtomType::I64)
+          a->val.i64 <<= b->val.i64;
+        else throw "TypeError: bad value type for operator '<<'";
+        break;
+      }
+      case OpType::Shr: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64 && b->type == AtomType::I64)
+          a->val.i64 >>= b->val.i64;
+        else throw "TypeError: bad value type for operator '>>'";
+        break;
+      }
+      case OpType::Lt: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 < b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 < b->val.f64;
+          else throw "TypeError: bad value type for operator '<'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.f64 < b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 < b->val.f64;
+          else throw "TypeError: bad value type for operator '<'";
+        else throw "TypeError: bad value type for operator '<'";
+        break;
+      }
+      case OpType::Le: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 <= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 <= b->val.f64;
+          else throw "TypeError: bad value type for operator '<='";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 <= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 <= b->val.f64;
+          else throw "TypeError: bad value type for operator '<='";
+        else throw "TypeError: bad value type for operator '<='";
+        break;
+      }
+      case OpType::Gt: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 > b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 > b->val.f64;
+          else throw "TypeError: bad value type for operator '>'";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.f64 > b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 > b->val.f64;
+          else throw "TypeError: bad value type for operator '>'";
+        else throw "TypeError: bad value type for operator '>'";
+        break;
+      }
+      case OpType::Ge: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 >= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 >= b->val.f64;
+          else throw "TypeError: bad value type for operator '>='";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 >= b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 >= b->val.f64;
+          else throw "TypeError: bad value type for operator '>='";
+        else throw "TypeError: bad value type for operator '>='";
+        break;
+      }
+      case OpType::Ne: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 != b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 != b->val.f64;
+          else throw "TypeError: bad value type for operator '!='";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 != b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 != b->val.f64;
+          else throw "TypeError: bad value type for operator '!='";
+        else throw "TypeError: bad value type for operator '!='";
+        break;
+      }
+      case OpType::Eq: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64)
+          if (b->type == AtomType::I64)
+            a->val.i64 = a->val.i64 == b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->val.i64 = a->val.i64 == b->val.f64;
+          else throw "TypeError: bad value type for operator '=='";
+        else if (a->type == AtomType::F64)
+          if (b->type == AtomType::I64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 == b->val.i64;
+          else if (b->type == AtomType::F64)
+            a->type = AtomType::I64,
+            a->val.i64 = a->val.f64 == b->val.f64;
+          else throw "TypeError: bad value type for operator '=='";
+        else throw "TypeError: bad value type for operator '=='";
+        break;
+      }
+      case OpType::Band: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64 && b->type == AtomType::I64)
+          a->val.i64 &= b->val.i64;
+        else if (a->type == AtomType::List) {
+          a->val.list.push_back(std::move(*b));
+          b->~Atom();
+        }
+        else throw "TypeError: bad value type for operator '&'";
+        break;
+      }
+      case OpType::Bxor: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64 && b->type == AtomType::I64)
+          a->val.i64 ^= b->val.i64;
+        else throw "TypeError: bad value type for operator '^'";
+        break;
+      }
+      case OpType::Bor: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::I64 && b->type == AtomType::I64)
+          a->val.i64 |= b->val.i64;
+        else throw "TypeError: bad value type for operator '|'";
+        break;
+      }
+      case OpType::Ind: {
+        Atom* b = --stack_top;
+        Atom* a = stack_top-1;
+        if (a->type == AtomType::Str && b->type == AtomType::I64)
+          a->val.str = a->val.str[b->val.i64];
+        else if (a->type == AtomType::List && b->type == AtomType::I64) {
+          if (b->val.i64 >= a->val.list.size()) throw "IndexError: index out of range";
+          Atom item = a->val.list[b->val.i64];
+          a->val.list.std::vector<Atom>::~vector();
+          new (a) Atom(std::move(item));
+        } else throw "TypeError: bad value type for operator '[]'";
+        break;
+      }
+    }
+  }
+}
+
+int main() {
+  repl = 1;
+  std::cout << "ZN Interpreter [v0.0.1]\n";
+  std::string input;
+  while (1) {
+    try {
+      std::cout << "> ";
+      std::getline(std::cin, input);
+      L1:
+      stack_size = 0, stack_max_size = 0;
+      std::vector<Token> tokens = tokenize(input);
+      if (tokens.empty()) continue;
+      std::reverse(tokens.begin(), tokens.end());
+      std::vector<Op> ops;
+
+      while (!tokens.empty()) {
+        try {
+          expr_stmt(tokens, ops);
+        } catch (int) {
+          std::string input2;
+          std::cout << ". ";
+          std::getline(std::cin, input2);
+          input += "\n" + input2;
+          goto L1;
+        }
+        Token token = next(tokens);
+        if (token.type == TokenType::Null) break;
+        if (token.val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
+        while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
+        ops.emplace_back(OpType::Pop);
+        stack_size--;
+      }
+      if (!tokens.empty()) throw "SyntaxError: bad operator";
+      ops.emplace_back(OpType::End);
+      vars.resize(names.size());
+      // for (Op& op : ops) std::cout << fmt_op(op) << "\n";
+      // std::cout << "stack_size: " << stack_size << "\n";
+      // std::cout << "stack_max_size: " << stack_max_size << "\n";
+
+      Atom *stack = stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
+      
+      eval(ops, stack);
+      if (stack_size) {
+        std::cout << "= " << tostr(*stack) << "\n";
+        stack->~Atom();
+      }
+      free(stack);
+    } catch (char const* e) {
+      std::cout << "! " << e << "\n";
+    } catch (int) {
+      std::cout << "! SyntaxError: bad operator\n";
+    }
+  }
+  return 0;
+}
