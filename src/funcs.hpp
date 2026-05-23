@@ -49,11 +49,12 @@ void f_input(int argc, Atom* atoms) {
   atoms[-1].val.str = str;
 }
 
-void f_time(int argc, Atom* atoms) {
+void f_clock(int argc, Atom* atoms) {
   if (argc != 0) throw "ArgError: expect 0 argument";
   atoms[-1].type = AtomType::F64;
-  atoms[-1].val.f64 = (double)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 1e-6;
+  atoms[-1].val.f64 = (double)clock() / CLOCKS_PER_SEC;
 }
+
 void f_sin(int argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::F64;

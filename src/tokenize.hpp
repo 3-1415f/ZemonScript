@@ -102,6 +102,7 @@ std::vector<Token> tokenize(const std::string& input) {
         throw "SyntaxError: unknown character";
     }
   }
+  std::reverse(tokens.begin(), tokens.end());
   return tokens;
 }
 
