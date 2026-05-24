@@ -4,7 +4,7 @@
 [![GitHub release](https://img.shields.io/github/release/3-1415f/ZemonScript.svg)](https://github.com/3-1415f/ZemonScript/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 特性
+### 特性
 - **轻量快速**: 基于栈式虚拟机的高效解释器
 - **直观语法**: 类C风格语法，易于学习
 - **REPL支持**: 交互式编程环境
