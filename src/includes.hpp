@@ -8,14 +8,11 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <time.h>
 #include <chrono>
 #include <thread>
-// #include <stack>
-// #include <unordered_map>
 
 #include "typedef.hpp"
-#include "tokenize.hpp"
+#include "lexer.hpp"
 #include "type.hpp"
 #include "funcs.hpp"
 

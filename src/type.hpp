@@ -67,6 +67,7 @@ std::string arepl(Atom atom, bool color = 0) {
       return oss.str();
     }
   }
+  return "";
 }
 
 std::string atos(Atom atom) {
@@ -90,6 +91,7 @@ std::string atos(Atom atom) {
       return oss.str();
     }
   }
+  return "";
 }
 
 std::string otos(Op op) {
@@ -117,16 +119,16 @@ std::string otos(Op op) {
     case OpType::AsgInd: return "[]=";
     case OpType::End: return "END";
     case OpType::Pop: return "POP";
-    case OpType::Atom: return arepl(op.val.atom);
-    case OpType::Var: return '#' + std::to_string(op.val.num);
-    case OpType::Asg: return "=#" + std::to_string(op.val.num);
-    case OpType::Call: return "CALL," + std::to_string(op.val.num);
-    case OpType::List: return "LIST," + std::to_string(op.val.num);
-    case OpType::Jmp: return "JMP," + std::to_string(op.val.num);
-    case OpType::Jift: return "JIFT," + std::to_string(op.val.num);
-    case OpType::Jiff: return "JIFF," + std::to_string(op.val.num);
-    case OpType::Land: return "&&," + std::to_string(op.val.num);
-    case OpType::Lor: return "||," + std::to_string(op.val.num);
+    // case OpType::Atom: return arepl(op.val.atom);
+    case OpType::Var: return '#' + std::to_string(op.val.usize);
+    case OpType::Asg: return "=#" + std::to_string(op.val.usize);
+    case OpType::Call: return "CALL," + std::to_string(op.val.usize);
+    case OpType::List: return "LIST," + std::to_string(op.val.usize);
+    case OpType::Jmp: return "JMP," + std::to_string(op.val.size);
+    case OpType::Jift: return "JIFT," + std::to_string(op.val.size);
+    case OpType::Jiff: return "JIFF," + std::to_string(op.val.size);
+    case OpType::Land: return "&&," + std::to_string(op.val.size);
+    case OpType::Lor: return "||," + std::to_string(op.val.size);
   }
   return "";
 }

@@ -25,15 +25,15 @@ enum class OpType : char {
   Band, Bxor, Bor,
   Ind, AsgInd,
   End, Pop,
-  Atom,
-  Var, Asg, Call, List, Jmp, Jift, Jiff, Land, Lor
+  Null, Str, I64, F64,
+  Var, Asg, AsgPop, Call, List, Jmp, Jift, Jiff, Land, Lor
 };
 
 enum class AtomType : char  { None, Null, I64, F64, Str, List, StdFn };
 typedef struct Atom Atom;
 typedef void (*ZnStdFn)(int, Atom*);
 
-typedef struct Atom {
+struct Atom {
   AtomType type;
   union Val {
     long long i64;
@@ -69,7 +69,7 @@ typedef struct Atom {
     else if (a.type == AtomType::List)
       new (&val.list) std::vector<Atom>(std::move(a.val.list));
     else if (a.type == AtomType::StdFn)
-      val.stdfn = std::move(a.val.stdfn);
+      val.stdfn = a.val.stdfn;
     else type = AtomType::Null;
   }
 
@@ -97,6 +97,30 @@ typedef struct Atom {
     return *this;
   }
 
+  Atom& operator=(Atom&& a) {
+    if (this == &a) return *this;
+
+    if (type == AtomType::Str)
+      val.str.std::string::~string();
+    else if (type == AtomType::List)
+      val.list.std::vector<Atom>::~vector();
+
+    type = a.type;
+    if (type == AtomType::I64)
+      val.i64 = a.val.i64;
+    else if (type == AtomType::F64)
+      val.f64 = a.val.f64;
+    else if (type == AtomType::Str)
+      new (&val.str) std::string(std::move(a.val.str));
+    else if (type == AtomType::List)
+      new (&val.list) std::vector<Atom>(std::move(a.val.list));
+    else if (type == AtomType::StdFn)
+      val.stdfn = a.val.stdfn;
+    else type = AtomType::Null;
+
+    return *this;
+  }
+
   ~Atom() {
     if (type == AtomType::Str)
       val.str.std::string::~string();
@@ -106,16 +130,16 @@ typedef struct Atom {
 
   Atom() : type(AtomType::None) {val.i64 = 0;}
   Atom(AtomType t) : type(t) {val.i64 = 0;}
-  Atom(double v) : type(AtomType::F64) { val.f64 = v; }
   Atom(long long v) : type(AtomType::I64) { val.i64 = v; }
+  Atom(double v) : type(AtomType::F64) { val.f64 = v; }
   Atom(const std::string& v) : type(AtomType::Str) { new (&val.str) std::string(v); }
   Atom(const std::vector<Atom>& v) : type(AtomType::List) { new (&val.list) std::vector<Atom>(v); }
   Atom(ZnStdFn v) : type(AtomType::StdFn) { val.stdfn = v; }
-} Atom;
+};
 
 enum class TokenType : char  { Null, Atom, Symbol, Id };
-typedef struct Token {
-  TokenType type;
+struct Token {
+  enum TokenType type;
   union Val {
     Atom atom;
     Symbol sym;
@@ -169,7 +193,7 @@ typedef struct Token {
     other.type = TokenType::Null;
     return *this;
   }
-} Token;
+};
 
 namespace std {
   template<> void swap(Token& a, Token& b) noexcept {
@@ -179,40 +203,58 @@ namespace std {
   }
 }
 
-typedef struct Op {
+struct Op {
   OpType type;
   union Val {
-    Atom atom;
-    int num;
+    std::string str;
+    long long i64;
+    double f64;
+    size_t usize;
+    ssize_t size;
     Val() {}
     ~Val() {}
   } val;
-  Op(const Op& c) : type(c.type) {
-    if (type == OpType::Atom)
-      new (&val.atom) Atom(c.val.atom);
-    else if (type >= OpType::Var && type <= OpType::Lor)
-      val.num = c.val.num;
+  Op(const Op& o) : type(o.type) {
+    if (type == OpType::Str)
+      new (&val.str) std::string(o.val.str);
+    else if (type == OpType::I64)
+      val.i64 = o.val.i64;
+    else if (type == OpType::F64)
+      val.f64 = o.val.f64;
+    else if (type >= OpType::Var && type <= OpType::List)
+      val.usize = o.val.usize;
+    else if (type >= OpType::Jmp && type <= OpType::Lor)
+      val.usize = o.val.usize;
   }
-  Op& operator=(const Op& c) {
-    if (this == &c) return *this;
+  Op& operator=(const Op& o) {
+    if (this == &o) return *this;
 
-    if (type == OpType::Atom)
-      val.atom.~Atom();
+    if (type == OpType::Str)
+      val.str.std::string::~string();
 
-    type = c.type;
-    if (type == OpType::Atom)
-      new (&val.atom) Atom(c.val.atom);
-    else if (type >= OpType::Var && type <= OpType::Lor)
-      val.num = c.val.num;
+    type = o.type;
+    if (type == OpType::Str)
+      new (&val.str) std::string(o.val.str);
+    else if (type == OpType::I64)
+      val.i64 = o.val.i64;
+    else if (type == OpType::F64)
+      val.f64 = o.val.f64;
+    else if (type >= OpType::Var && type <= OpType::List)
+      val.usize = o.val.usize;
+    else if (type >= OpType::Jmp && type <= OpType::Lor)
+      val.usize = o.val.usize;
     return *this;
   }
   ~Op() {
-    if (type == OpType::Atom)
-      val.atom.~Atom();
+    if (type == OpType::Str)
+      val.str.std::string::~string();
   }
   Op(OpType type) : type(type) {}
-  Op(const Atom& v) : type(OpType::Atom) { new (&val.atom) Atom(v); }
-  Op(OpType type, int v) : type(type) { val.num = v; }
-} Op;
+  Op(std::string str) : type(OpType::Str) {new (&val.str) std::string(str);}
+  Op(long long i64) : type(OpType::I64) { val.i64 = i64; }
+  Op(double f64) : type(OpType::F64) { val.f64 = f64; }
+  Op(OpType type, size_t usize) : type(type) { val.usize = usize; }
+  Op(OpType type, ssize_t size) : type(type) { val.size = size; }
+};
 
 #endif
