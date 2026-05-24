@@ -58,7 +58,7 @@ short infix(Symbol op) {
   }
 }
 
-std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "clock", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
+std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
 size_t stack_size = 0, stack_max_size = 0;
 
 void expr(std::vector<Token>&, std::vector<Op>&, short);
@@ -297,46 +297,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp) {
   }
 }
 
-std::string fmt_op(Op op) {
-  switch (op.type) {
-    case OpType::Bnot: return "~";
-    case OpType::Lnot: return "!";
-    case OpType::Add: return "+";
-    case OpType::Sub: return "-";
-    case OpType::Mul: return "*";
-    case OpType::Div: return "/";
-    case OpType::Mod: return "%";
-    case OpType::Pow: return "**";
-    case OpType::Shl: return "<<";
-    case OpType::Shr: return ">>";
-    case OpType::Lt: return "<";
-    case OpType::Le: return "<=";
-    case OpType::Gt: return ">";
-    case OpType::Ge: return ">=";
-    case OpType::Ne: return "!=";
-    case OpType::Eq: return "==";
-    case OpType::Band: return "&";
-    case OpType::Bxor: return "^";
-    case OpType::Bor: return "|";
-    case OpType::Ind: return "[]";
-    case OpType::AsgInd: return "[]=";
-    case OpType::End: return "END";
-    case OpType::Pop: return "POP";
-    case OpType::Atom: return tostr(op.val.atom);
-    case OpType::Var: return names[op.val.num];
-    case OpType::Asg: return "=," + names[op.val.num];
-    case OpType::Call: return "CALL," + std::to_string(op.val.num);
-    case OpType::List: return "LIST," + std::to_string(op.val.num);
-    case OpType::Jmp: return "JMP," + std::to_string(op.val.num);
-    case OpType::Jift: return "JIFT," + std::to_string(op.val.num);
-    case OpType::Jiff: return "JIFF," + std::to_string(op.val.num);
-    case OpType::Land: return "&&," + std::to_string(op.val.num);
-    case OpType::Lor: return "||," + std::to_string(op.val.num);
-  }
-  return "";
-}
-
-std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_clock, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
+std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
 
 void eval(const std::vector<Op>& cmds, Atom *stack) {
   Atom *pvar = vars.data();
@@ -363,8 +324,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       case OpType::Call: {
         Atom *atom = stack_top - cmd.val.num - 1;
-        if (atom->type != AtomType::Bltfn) throw "TypeError: bad value type for function call";
-        atom->val.bltfn(cmd.val.num, atom + 1);
+        if (atom->type != AtomType::StdFn) throw "TypeError: bad value type for function call";
+        atom->val.stdfn(cmd.val.num, atom + 1);
         for (Atom *a = atom + 1; a != stack_top; a++) a->~Atom();
         stack_top = atom + 1;
         break;
@@ -395,7 +356,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
           }
           break;
         }
-        if (tobool(*stack_top)) {
+        if (atob(*stack_top)) {
           it += cmd.val.num;
           stack_top->~Atom();
           goto L1;
@@ -416,7 +377,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
           it += cmd.val.num;
           goto L1;
         }
-        if (tobool(*stack_top)) {
+        if (atob(*stack_top)) {
           stack_top->~Atom();
           break;
         }
@@ -425,7 +386,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         goto L1;
       case OpType::Land:
         --stack_top;
-        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : atob(*stack_top)) {
           stack_top->~Atom();
           break;
         }
@@ -434,7 +395,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         goto L1;
       case OpType::Lor: {
         --stack_top;
-        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : tobool(*stack_top)) {
+        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : atob(*stack_top)) {
           stack_top->~Atom();
           it += cmd.val.num;
           goto L1;
@@ -470,7 +431,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
             a->val.i64 = b;
             break;
           }
-          case AtomType::Bltfn:
+          case AtomType::StdFn:
             a->type = AtomType::I64;
             a->val.i64 = 1;
             break;
@@ -519,6 +480,12 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
           else if (b->type == AtomType::F64)
             a->val.f64 *= b->val.f64;
           else throw "TypeError: bad value type for operator '*'";
+        else if (a->type == AtomType::Str && b->type == AtomType::I64) {
+          if (b->val.i64 < 0) throw "ArgError: bad argument range for operator '*'";
+          if (b->val.i64 == 0) {a->val.str = ""; break;}
+          std::string s = a->val.str;
+          while (--b->val.i64) a->val.str += s;
+        }
         else throw "TypeError: bad value type for operator '*'";
         break;
       }
@@ -782,14 +749,21 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
     }
   }
 }
-
+#ifdef WIN32
+#include <windows.h>
+#endif
 int main(int argc, char **argv) {
+  bool color = 0;
   if (argc > 1) {
     char *filepath;
     if (argv[1][0] == 0) goto Help;
     if (argv[1][0] != '-') {filepath = argv[1]; goto RunFile;}
     if (argv[1][1] == 'h') goto Help;
-    if (argv[1][1] == 'r') goto Repl;
+    if (argv[1][1] == 'c') {color = 1; goto Repl;}
+    if (argv[1][1] == 'r') {
+      if (argc > 2) if (argv[2][0] == '-') if (argv[2][1] == 'c') color = 1;
+      goto Repl;
+    }
     if (argv[1][1] == 'f')
     if (argc > 2) {filepath = argv[2]; goto RunFile;}
     else goto Help;
@@ -797,10 +771,10 @@ int main(int argc, char **argv) {
     goto RunFile;
 
     Help:
-      std::cout << "Zemon Interpreter [v0.0.1]\nUsage: \n"
-      << argv[0] << "-h            - help\n"
-      << argv[0] << "[-r]          - repl\n"
-      << argv[0] << "[-f] file.zns - run file\n";
+      std::cout << "Zemon Interpreter [v0.1.0]\nUsage: \n"
+      << argv[0] << " -h            - help\n"
+      << argv[0] << " [-r] [-c]     - repl [with color]\n"
+      << argv[0] << " [-f] file.zns - run file\n";
       return 0;
     
     RunFile:
@@ -828,12 +802,20 @@ int main(int argc, char **argv) {
       }
   }
   Repl:
+  #ifdef WIN32
+  if (color) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    GetConsoleMode(hOut, &mode);
+    SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  }
+  #endif
   repl = 1;
-  std::cout << "Zemon Interpreter [v0.0.1]\n";
+  std::cout << (color ? "\033[1;33mZemon Interpreter [v0.1.0]\033[0m\n" : "Zemon Interpreter [v0.1.0]\n");
   std::string input;
   while (1) {
     try {
-      std::cout << "> ";
+      std::cout << (color ? "\033[1;33m> \033[0m" : "> ");
       std::getline(std::cin, input);
       L1:
       std::vector<Token> tokens = tokenize(input);
@@ -844,26 +826,27 @@ int main(int argc, char **argv) {
         expr_stmt(tokens, ops, true);
       } catch (int) {
         std::string input2;
-        std::cout << ". ";
+        std::cout << (color ? "\033[1;33m. \033[0m" : ". ");
         std::getline(std::cin, input2);
         input += "\n" + input2;
         goto L1;
       }
       ops.emplace_back(OpType::End);
       vars.resize(names.size());
-      // for (Op& op : ops) std::cout << fmt_op(op) << "\n";
+
+      // for (Op& op : ops) std::cout << otos(op) << "\n";
       // std::cout << "stack_size: " << stack_size << "\n";
       // std::cout << "stack_max_size: " << stack_max_size << "\n";
 
       Atom *stack = stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
       eval(ops, stack);
       if (stack_size) {
-        std::cout << "= " << tostr(*stack) << "\n";
+        std::cout << (color ? "\033[1;33m= \033[0m" : "= ") << arepl(*stack, color) << "\n";
         stack->~Atom();
       }
       free(stack);
     } catch (char const* e) {
-      std::cerr << "! " << e << "\n";
+      std::cerr << (color ? "\033[1;33m! \033[1;31m" : "! ") << e << (color ? "\033[0m\n" : "\n");
     }
   }
 }

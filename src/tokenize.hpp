@@ -7,36 +7,46 @@ std::vector<Token> tokenize(const std::string& input) {
   std::vector<Token> tokens;
   size_t i = 0;
   auto peek = [&]() -> char {
-    return i < input.size() ? input[i] : '\0';
+    return i < input.size() ? input[i] : 0;
   };
   auto next = [&]() -> char {
-    return i < input.size() ? input[i++] : '\0';
+    return i < input.size() ? input[i++] : 0;
   };
   while (i < input.size()) {
     char c = next();
-    if (std::isspace(c)) continue;
+    if (isspace(c)) continue;
     if (c == '"' || c == '\'') {
       char quote = c;
       std::string s;
       while (true) {
-        char nc;
-        if (!(nc = next())) throw "SyntaxError: unterminated string";
-        if (nc == '\\') {
-          char esc = next();
-          switch (esc) {
-            case 'n': s += '\n'; break;
-            case 't': s += '\t'; break;
-            case 'r': s += '\r'; break;
-            case '\\': s += '\\'; break;
-            case '\"': s += '\"'; break;
-            case '\'': s += '\''; break;
-            default:
-              throw "SyntaxError: bad escape sequence";
-          }
-        } else if (nc == quote)
-          break;
-        else
-          s += nc;
+        c = next();
+        if (!c) throw "SyntaxError: unterminated string";
+        if (c == quote) break;
+        if (c == '\\') switch (c = next()) {
+          case 'a': s += '\a'; break;
+          case 'b': s += '\b'; break;
+          case 'f': s += '\f'; break;
+          case 'n': s += '\n'; break;
+          case 'r': s += '\r'; break;
+          case 't': s += '\t'; break;
+          case 'v': s += '\v'; break;
+          case '"': s += '"'; break;
+          case '\'': s += '\''; break;
+          case '\\': s += '\\'; break;
+          case 'x':
+            if (i+2 >= input.size()) throw "SyntaxError: unterminated string";
+            try {s += (char)stoi(input.substr(i, 2), nullptr, 16);}
+            catch (std::invalid_argument&) {throw "SyntaxError: bad escape sequence";}
+            i += 2;
+            break;
+          default:
+            if (c < '0' || c > '7') throw "SyntaxError: bad escape sequence";
+            if (i+2 >= input.size()) throw "SyntaxError: unterminated string";
+            s += (char)stoi(input.substr(i - 1, 3), nullptr, 8);
+            i += 2;
+            break;
+        }
+        else s += c;
       }
       tokens.emplace_back(Atom{s});
     } else if (isdigit(c)) {
@@ -71,7 +81,7 @@ std::vector<Token> tokenize(const std::string& input) {
       case '/':
         if (peek() == '/')
           do next();
-          while (peek() != '\n' && peek() != '\0');
+          while (peek() && peek() != '\n');
         else tokens.emplace_back(Symbol::Div);
         break;
 

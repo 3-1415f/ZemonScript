@@ -29,9 +29,9 @@ enum class OpType : char {
   Var, Asg, Call, List, Jmp, Jift, Jiff, Land, Lor
 };
 
-enum class AtomType : char  { None, Null, I64, F64, Str, List, Bltfn };
+enum class AtomType : char  { None, Null, I64, F64, Str, List, StdFn };
 typedef struct Atom Atom;
-typedef void (*BltFn)(int, Atom*);
+typedef void (*ZnStdFn)(int, Atom*);
 
 typedef struct Atom {
   AtomType type;
@@ -40,7 +40,7 @@ typedef struct Atom {
     double f64;
     std::string str;
     std::vector<Atom> list;
-    BltFn bltfn;
+    ZnStdFn stdfn;
     Val() {}
     ~Val() {}
   } val;
@@ -54,8 +54,8 @@ typedef struct Atom {
       new (&val.str) std::string(a.val.str);
     else if (a.type == AtomType::List)
       new (&val.list) std::vector<Atom>(a.val.list);
-    else if (a.type == AtomType::Bltfn)
-      val.bltfn = a.val.bltfn;
+    else if (a.type == AtomType::StdFn)
+      val.stdfn = a.val.stdfn;
     else type = AtomType::Null;
   }
 
@@ -68,8 +68,8 @@ typedef struct Atom {
       new (&val.str) std::string(std::move(a.val.str));
     else if (a.type == AtomType::List)
       new (&val.list) std::vector<Atom>(std::move(a.val.list));
-    else if (a.type == AtomType::Bltfn)
-      val.bltfn = std::move(a.val.bltfn);
+    else if (a.type == AtomType::StdFn)
+      val.stdfn = std::move(a.val.stdfn);
     else type = AtomType::Null;
   }
 
@@ -90,8 +90,8 @@ typedef struct Atom {
       new (&val.str) std::string(a.val.str);
     else if (type == AtomType::List)
       new (&val.list) std::vector<Atom>(a.val.list);
-    else if (type == AtomType::Bltfn)
-      val.bltfn = a.val.bltfn;
+    else if (type == AtomType::StdFn)
+      val.stdfn = a.val.stdfn;
     else type = AtomType::Null;
 
     return *this;
@@ -110,7 +110,7 @@ typedef struct Atom {
   Atom(long long v) : type(AtomType::I64) { val.i64 = v; }
   Atom(const std::string& v) : type(AtomType::Str) { new (&val.str) std::string(v); }
   Atom(const std::vector<Atom>& v) : type(AtomType::List) { new (&val.list) std::vector<Atom>(v); }
-  Atom(BltFn v) : type(AtomType::Bltfn) { val.bltfn = v; }
+  Atom(ZnStdFn v) : type(AtomType::StdFn) { val.stdfn = v; }
 } Atom;
 
 enum class TokenType : char  { Null, Atom, Symbol, Id };
