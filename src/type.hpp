@@ -2,6 +2,16 @@
 #define ZN_TYPE_HPP
 #include "includes.hpp"
 
+std::string ftos(double v) {
+  if (std::isnan(v)) return "nan";
+  if (std::isinf(v)) return (v < 0) ? "-inf" : "inf";
+
+  std::ostringstream oss;
+  oss << std::defaultfloat << std::setprecision(15) << v;
+  std::string s = oss.str();
+  return s.find('.') == std::string::npos ? s + ".0" : s;
+}
+
 inline bool atob(Atom& atom) {
   switch (atom.type) {
     case AtomType::Null: return false;
@@ -23,13 +33,13 @@ long long atoi(Atom& atom) {
   }
 }
 
-std::string arepl(Atom atom, bool color = 0) {
+std::string arepl(Atom atom) {
   switch (atom.type) {
-    case AtomType::Null: return color ? "\033[1;34mnull\033[0m" : "null";
-    case AtomType::I64: return color ? "\033[1;34m" + std::to_string(atom.val.i64) + "\033[0m" : std::to_string(atom.val.i64);
-    case AtomType::F64: return color ? "\033[1;34m" + std::to_string(atom.val.f64) + "\033[0m" : std::to_string(atom.val.f64);
+    case AtomType::Null: return "null";
+    case AtomType::I64: return std::to_string(atom.val.i64);
+    case AtomType::F64: return ftos(atom.val.f64);
     case AtomType::Str: {
-      std::string result = color ? "\033[1;32m'" : "'";
+      std::string result = "'";
       for (char c : atom.val.str)
         switch (c) {
           case '\\': result += "\\\\"; break;
@@ -49,21 +59,20 @@ std::string arepl(Atom atom, bool color = 0) {
           const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
           result += std::string("\\x") + hex[(c >> 4) & 0xf] + hex[c & 0xf];
         }
-      return result + (color ? "'\033[0m" : "'");
+      return result + "'";
     }
     case AtomType::List: {
-      std::string result = color ? "\033[33m[" : "[";
+      std::string result = "[";
       for (const auto& a : atom.val.list)
-        result += arepl(a, color) + (color ? "\033[33m, " : ", ");
+        result += arepl(a) + ", ";
       if (!atom.val.list.empty())
         result.resize(result.size() - 2);
-      result += color ? "]\033[0m" : "]";
+      result += "]";
       return result;
     }
     case AtomType::StdFn: {
       std::ostringstream oss;
-      if (color) oss << "\033[1;36m<zn-std-function @0x" << std::hex << (size_t)atom.val.stdfn << ">\033[0m";
-      else oss << "<zn-std-function @0x" << std::hex << (size_t)atom.val.stdfn << ">";
+      oss << "<zn-std-function @ 0x" << std::hex << std::setw(sizeof(size_t) * 2) << std::setfill('0') << (size_t)atom.val.stdfn << std::dec << ">";
       return oss.str();
     }
   }
@@ -74,7 +83,7 @@ std::string atos(Atom atom) {
   switch (atom.type) {
     case AtomType::Null: return "null";
     case AtomType::I64: return std::to_string(atom.val.i64);
-    case AtomType::F64: return std::to_string(atom.val.f64);
+    case AtomType::F64: return ftos(atom.val.f64);
     case AtomType::Str: return atom.val.str;
     case AtomType::List: {
       std::string result = "[";
@@ -87,7 +96,7 @@ std::string atos(Atom atom) {
     }
     case AtomType::StdFn: {
       std::ostringstream oss;
-      oss << "<zn-std-function @0x" << std::hex << (size_t)atom.val.stdfn << ">";
+      oss << "<zn-std-function @ 0x" << std::hex << std::setw(sizeof(size_t) * 2) << std::setfill('0') << (size_t)atom.val.stdfn << std::dec << ">";
       return oss.str();
     }
   }

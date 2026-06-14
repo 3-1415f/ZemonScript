@@ -10,8 +10,7 @@ Token next(std::vector<Token>& tokens) {
 }
 
 Token peek(std::vector<Token>& tokens) {
-  if (tokens.empty()) return Token();
-  return tokens.back();
+  return tokens.empty() ? Token() : tokens.back();
 }
 
 short prefix(Symbol op) {
@@ -774,12 +773,12 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
     }
-    E1:
-    stack_top->~Atom();
-    E2:
-    for (Atom *it = stack; it < stack_top; it++) it->~Atom();
-    throw err;
   }
+  E1:
+  stack_top->~Atom();
+  E2:
+  for (Atom *it = stack; it < stack_top; it++) it->~Atom();
+  throw err;
 }
 
 #ifdef WIN32
@@ -829,7 +828,7 @@ int main(int argc, char **argv) {
         free(stack);
         return 0;
       }
-      catch (char const* e) {
+      catch (std::string e) {
         std::cerr << "! " << e << "\n";
         return 2;
       }
@@ -844,7 +843,7 @@ int main(int argc, char **argv) {
   }
   #endif
   repl = 1;
-  std::cout << (color ? "\033[1;33mZemon Interpreter [v0.1.0]\033[0m\n" : "Zemon Interpreter [v0.1.0]\n");
+  std::cout << "Zemon Interpreter [v0.1.0]\n";
   std::string input;
   while (1) {
     std::cout << (color ? "\033[1;33m> \033[0m" : "> ");
@@ -874,12 +873,12 @@ int main(int argc, char **argv) {
       Atom *stack = stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
       eval(ops, stack);
       if (stack_size) {
-        std::cout << (color ? "\033[1;33m= \033[0m" : "= ") << arepl(*stack, color) << "\n";
+        std::cout << (color ? "\033[1;33m= " : "= ") << arepl(*stack) << "\n";
         stack->~Atom();
       }
       free(stack);
-    } catch (char const* e) {
-      std::cerr << (color ? "\033[1;33m! \033[1;31m" : "! ") << e << (color ? "\033[0m\n" : "\n");
+    } catch (std::string e) {
+      std::cerr << (color ? "\033[1;31m! " : "! ") << e << "\n";
     }
   }
 }

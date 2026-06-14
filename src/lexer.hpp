@@ -63,19 +63,23 @@ std::vector<Token> tokenize(const std::string& input) {
       tokens.emplace_back(Atom{s});
     } else if (c >= '0' && c <= '9') {
       long long v = c - '0';
-      double fv, f = 1.0;
+      double fv = c - '0', f = 1.0;
       bool dot = false;
       while (i < len) {
         c = input[i];
-         if (c == '.') {
-          if (dot) throw "SyntaxError: multiple decimal points";
-          fv = v, dot = true, i++;
-        }
+        if (c == '.')
+        if (dot) throw "SyntaxError: multiple decimal points";
+        else dot = true, i++;
         else if (c == '_') i++;
         else if (c >= '0' && c <= '9')
         if (dot) fv += (f *= 0.1) * (c-'0'), i++;
-        else v = v*10 + c-'0', i++;
+        else v = v*10 + c-'0', fv = fv*10 + c-'0', i++;
         else break;
+      }
+      if (!tokens.empty()) if (tokens.back().type == TokenType::Symbol && (tokens.back().val.sym == Symbol::Add || tokens.back().val.sym == Symbol::Sub)) {
+        tokens.pop_back();
+        if (tokens.back().val.sym == Symbol::Sub)
+        fv = -fv, v = -v;
       }
       if (dot) tokens.emplace_back(Atom{fv});
       else tokens.emplace_back(Atom{v});

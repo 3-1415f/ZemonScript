@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <iomanip>
 
 #include "typedef.hpp"
 #include "lexer.hpp"
