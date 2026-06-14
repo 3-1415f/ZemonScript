@@ -1,0 +1,8 @@
+t=clock();
+s=0.0;
+x=0.000001;
+while x<1000000. {
+  s=s+x*atan(x)/e**x/(1+x*x)**2*x*0.00001;
+  x=x*1.00001;
+}
+outln("[time] ", clock()-t, "[res] ", s);
