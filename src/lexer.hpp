@@ -76,11 +76,6 @@ std::vector<Token> tokenize(const std::string& input) {
         else v = v*10 + c-'0', fv = fv*10 + c-'0', i++;
         else break;
       }
-      if (!tokens.empty()) if (tokens.back().type == TokenType::Symbol && (tokens.back().val.sym == Symbol::Add || tokens.back().val.sym == Symbol::Sub)) {
-        tokens.pop_back();
-        if (tokens.back().val.sym == Symbol::Sub)
-        fv = -fv, v = -v;
-      }
       if (dot) tokens.emplace_back(Atom{fv});
       else tokens.emplace_back(Atom{v});
     } else if (isalpha(c) || c == '_') {

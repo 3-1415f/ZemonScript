@@ -31,7 +31,7 @@ enum class OpType : char {
 
 enum class AtomType : char  { None, Null, I64, F64, Str, List, StdFn };
 typedef struct Atom Atom;
-typedef void (*ZnStdFn)(int, Atom*);
+typedef void (*ZnStdFn)(size_t, Atom*);
 
 struct Atom {
   AtomType type;
@@ -224,7 +224,7 @@ struct Op {
     else if (type >= OpType::Var && type <= OpType::List)
       val.usize = o.val.usize;
     else if (type >= OpType::Jmp && type <= OpType::Lor)
-      val.usize = o.val.usize;
+      val.size = o.val.size;
   }
   Op& operator=(const Op& o) {
     if (this == &o) return *this;
@@ -242,7 +242,7 @@ struct Op {
     else if (type >= OpType::Var && type <= OpType::List)
       val.usize = o.val.usize;
     else if (type >= OpType::Jmp && type <= OpType::Lor)
-      val.usize = o.val.usize;
+      val.size = o.val.size;
     return *this;
   }
   ~Op() {

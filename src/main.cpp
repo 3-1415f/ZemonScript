@@ -314,12 +314,92 @@ std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str,
 void eval(const std::vector<Op>& cmds, Atom *stack) {
   Atom *pvar = &vars[0];
   Atom *stack_top = stack;
-  std::string err;
+  const char *err;
 
   for (const Op *p_op = &cmds[0];; p_op++) {
     L1:
     Op cmd = *p_op;
     switch (cmd.type) {
+      case OpType::Pop:
+        (--stack_top)->~Atom();
+        break;
+        
+      case OpType::Null:
+        (stack_top++)->type = AtomType::Null;
+        break;
+      case OpType::Str:
+        stack_top->type = AtomType::Str;
+        new (&stack_top++->val.str) std::string(cmd.val.str);
+        break;
+      case OpType::I64:
+        stack_top->type = AtomType::I64;
+        (stack_top++)->val.i64 = cmd.val.i64;
+        break;
+      case OpType::F64:
+        stack_top->type = AtomType::F64;
+        (stack_top++)->val.f64 = cmd.val.f64;
+        break;
+
+      case OpType::Var:
+        if (pvar[cmd.val.usize].type == AtomType::None) {err = "NameError: variable not found"; goto E2;}
+        new (stack_top++) Atom(pvar[cmd.val.usize]);
+        break;
+      case OpType::Asg:
+        pvar[cmd.val.usize] = stack_top[-1];
+        break;
+      case OpType::AsgPop:
+        pvar[cmd.val.usize] = std::move(*--stack_top);
+        stack_top->~Atom();
+        break;
+
+      case OpType::Call: {
+        Atom *atom = stack_top - cmd.val.usize;
+        if ((atom-1)->type != AtomType::StdFn) {err = "TypeError: bad value type for function call"; goto E2;}
+        (atom-1)->val.stdfn(cmd.val.usize, atom);
+        for (Atom *a = atom; a != stack_top; a++) a->~Atom();
+        stack_top = atom;
+        break;
+      }
+      case OpType::List: {
+        std::vector<Atom> list;
+        std::move(stack_top - cmd.val.usize, stack_top, std::back_inserter(list));
+        // for (Atom *a = stack_top - cmd.val.usize; a != stack_top; a++) a->~Atom();
+        stack_top = stack_top - cmd.val.usize;
+        new (stack_top++) Atom(std::move(list));
+        break;
+      }
+      case OpType::Jmp:
+        p_op += cmd.val.size;
+        goto L1;
+      case OpType::Jift:
+        --stack_top;
+        if (stack_top->type == AtomType::I64) {
+          if (!stack_top->val.i64) break;
+          p_op += cmd.val.size;
+          goto L1;
+        }
+        if (atob(*stack_top)) {
+          p_op += cmd.val.size;
+          stack_top->~Atom();
+          goto L1;
+        }
+        stack_top->~Atom();
+        break;
+      case OpType::Jiff:
+        --stack_top;
+        if (stack_top->type == AtomType::I64) {
+          if (stack_top->val.i64) break;
+          p_op += cmd.val.size;
+          goto L1;
+        }
+        if (atob(*stack_top)) {
+          stack_top->~Atom();
+          break;
+        }
+        p_op += cmd.val.size;
+        stack_top->~Atom();
+        goto L1;
+
       case OpType::Lnot: {
         Atom *a = stack_top - 1;
         switch (a->type) {
@@ -670,89 +750,6 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
 
-      case OpType::End:
-        return;
-      case OpType::Pop:
-        (--stack_top)->~Atom();
-        break;
-        
-      case OpType::Null:
-        (stack_top++)->type = AtomType::Null;
-        break;
-      case OpType::Str:
-        stack_top->type = AtomType::Str;
-        new (&stack_top++->val.str) std::string(cmd.val.str);
-        break;
-      case OpType::I64:
-        stack_top->type = AtomType::I64;
-        (stack_top++)->val.i64 = cmd.val.i64;
-        break;
-      case OpType::F64:
-        stack_top->type = AtomType::F64;
-        (stack_top++)->val.f64 = cmd.val.f64;
-        break;
-
-      case OpType::Var:
-        if (pvar[cmd.val.usize].type == AtomType::None) {err = "NameError: variable not found"; goto E2;}
-        new (stack_top++) Atom(pvar[cmd.val.usize]);
-        break;
-      case OpType::Asg:
-        pvar[cmd.val.usize] = stack_top[-1];
-        break;
-      case OpType::AsgPop:
-        pvar[cmd.val.usize] = std::move(*--stack_top);
-        stack_top->~Atom();
-        break;
-
-      case OpType::Call: {
-        Atom *atom = stack_top - cmd.val.usize - 1;
-        if (atom->type != AtomType::StdFn) {err = "TypeError: bad value type for function call"; goto E2;}
-        atom->val.stdfn(cmd.val.usize, atom + 1);
-        for (Atom *a = atom + 1; a != stack_top; a++) a->~Atom();
-        stack_top = atom + 1;
-        break;
-      }
-      case OpType::List: {
-        std::vector<Atom> list;
-        std::move(stack_top - cmd.val.usize, stack_top, std::back_inserter(list));
-        // for (Atom *a = stack_top - cmd.val.usize; a != stack_top; a++) a->~Atom();
-        stack_top = stack_top - cmd.val.usize;
-        new (stack_top++) Atom(std::move(list));
-        break;
-      }
-      case OpType::Jmp:
-        p_op += cmd.val.size;
-        goto L1;
-      case OpType::Jift:
-        --stack_top;
-        if (stack_top->type == AtomType::I64) {
-          if (stack_top->val.i64) {
-            p_op += cmd.val.size;
-            goto L1;
-          }
-          break;
-        }
-        if (atob(*stack_top)) {
-          p_op += cmd.val.size;
-          stack_top->~Atom();
-          goto L1;
-        }
-        stack_top->~Atom();
-        break;
-      case OpType::Jiff:
-        --stack_top;
-        if (stack_top->type == AtomType::I64) {
-          if (stack_top->val.i64) break;
-          p_op += cmd.val.size;
-          goto L1;
-        }
-        if (atob(*stack_top)) {
-          stack_top->~Atom();
-          break;
-        }
-        p_op += cmd.val.size;
-        stack_top->~Atom();
-        goto L1;
       case OpType::Land:
         --stack_top;
         if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : atob(*stack_top)) {
@@ -772,6 +769,9 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         stack_top->~Atom();
         break;
       }
+
+      case OpType::End:
+        return;
     }
   }
   E1:
@@ -828,7 +828,7 @@ int main(int argc, char **argv) {
         free(stack);
         return 0;
       }
-      catch (std::string e) {
+      catch (const char *e) {
         std::cerr << "! " << e << "\n";
         return 2;
       }
@@ -877,7 +877,7 @@ int main(int argc, char **argv) {
         stack->~Atom();
       }
       free(stack);
-    } catch (std::string e) {
+    } catch (const char *e) {
       std::cerr << (color ? "\033[1;31m! " : "! ") << e << "\n";
     }
   }
