@@ -781,72 +781,47 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
   throw err;
 }
 
-#ifdef WIN32
-#include <windows.h>
-#endif
 int main(int argc, char **argv) {
-  bool color = 0;
+  char *filepath;
   if (argc > 1) {
-    char *filepath;
-    if (argv[1][0] == 0) goto Help;
-    if (argv[1][0] != '-') {filepath = argv[1]; goto RunFile;}
-    if (argv[1][1] == 'h') goto Help;
-    if (argv[1][1] == 'c') {color = 1; goto Repl;}
-    if (argv[1][1] == 'r') {
-      if (argc > 2) if (argv[2][0] == '-') if (argv[2][1] == 'c') color = 1;
-      goto Repl;
-    }
-    if (argv[1][1] == 'f')
-    if (argc > 2) {filepath = argv[2]; goto RunFile;}
-    else goto Help;
-    filepath = argv[1];
-    goto RunFile;
-
-    Help:
-      std::cout << "Zemon Interpreter [v0.1.0]\nUsage: \n"
-      << argv[0] << " -h            - help\n"
-      << argv[0] << " [-r] [-c]     - repl [with color]\n"
-      << argv[0] << " [-f] file.zns - run file\n";
+    if (argv[1][0] == '-') if (argv[1][1] == 'h') {
+      std::cout << "Zemon Interpreter [v1.0.0]\nUsage: \n"
+      << argv[0] << "          - repl\n"
+      << argv[0] << " -h       - help\n"
+      << argv[0] << " file.zns - run file\n";
       return 0;
-    
-    RunFile:
-      std::ifstream file(filepath);
-      if (!file.is_open()) {
-        std::cerr << "! failed to open file\n";
-        return 1;
-      }
-      try {
-        std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        std::vector<Token> tokens = tokenize(str);
-        std::vector<Op> ops;
-        size_t stack_size = 0, stack_max_size = 0;
-        expr_stmt(tokens, ops, stack_size, stack_max_size, true);
-        ops.emplace_back(OpType::End);
-        vars.resize(names.size());
-        Atom *stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
-        eval(ops, stack);
-        free(stack);
-        return 0;
-      }
-      catch (const char *e) {
-        std::cerr << "! " << e << "\n";
-        return 2;
-      }
+    }
+
+    filepath = argv[1];
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+      std::cerr << "! failed to open file\n";
+      return 1;
+    }
+    try {
+      std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+      std::vector<Token> tokens = tokenize(str);
+      std::vector<Op> ops;
+      size_t stack_size = 0, stack_max_size = 0;
+      expr_stmt(tokens, ops, stack_size, stack_max_size, true);
+      ops.emplace_back(OpType::End);
+      vars.resize(names.size());
+      Atom *stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
+      eval(ops, stack);
+      free(stack);
+      return 0;
+    }
+    catch (const char *e) {
+      std::cerr << "! " << e << "\n";
+      return 2;
+    }
   }
-  Repl:
-  #ifdef WIN32
-  if (color) {
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD mode = 0;
-    GetConsoleMode(hOut, &mode);
-    SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-  }
-  #endif
+
   repl = 1;
   std::cout << "Zemon Interpreter [v1.0.0]\n";
   std::string input;
   while (1) {
-    std::cout << (color ? "\033[1;33m> \033[0m" : "> ");
+    std::cout << "> ";
     std::getline(std::cin, input);
     try {
       L1:
@@ -858,7 +833,7 @@ int main(int argc, char **argv) {
         expr_stmt(tokens, ops, stack_size, stack_max_size, true);
       } catch (int) {
         std::string input2;
-        std::cout << (color ? "\033[1;33m. \033[0m" : ". ");
+        std::cout << ". ";
         std::getline(std::cin, input2);
         input += "\n" + input2;
         goto L1;
@@ -873,12 +848,12 @@ int main(int argc, char **argv) {
       Atom *stack = stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
       eval(ops, stack);
       if (stack_size) {
-        std::cout << (color ? "\033[1;33m= " : "= ") << arepl(*stack) << "\n";
+        std::cout << "= " << arepl(*stack) << "\n";
         stack->~Atom();
       }
       free(stack);
     } catch (const char *e) {
-      std::cerr << (color ? "\033[1;31m! " : "! ") << e << "\n";
+      std::cerr << "! " << e << "\n";
     }
   }
 }
