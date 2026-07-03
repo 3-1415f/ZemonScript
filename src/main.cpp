@@ -843,7 +843,7 @@ int main(int argc, char **argv) {
   }
   #endif
   repl = 1;
-  std::cout << "Zemon Interpreter [v0.1.0]\n";
+  std::cout << "Zemon Interpreter [v1.0.0]\n";
   std::string input;
   while (1) {
     std::cout << (color ? "\033[1;33m> \033[0m" : "> ");
