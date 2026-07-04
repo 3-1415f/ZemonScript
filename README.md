@@ -129,5 +129,5 @@ while i < 10 {
 | `>>` | 右移 |
 </details>
 
-## 许可证
+### 许可证
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
