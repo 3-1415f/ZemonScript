@@ -1,4 +1,4 @@
-# ZemonScript
+## ZemonScript
 一个简单、轻量、快速的解释器，用于 Zemon (Zn) (*.zns) 语言。设计用于快速脚本编写和教育目的，具有直观简洁的语法。
 
 [![GitHub release](https://img.shields.io/github/release/3-1415f/ZemonScript.svg)](https://github.com/3-1415f/ZemonScript/releases)
@@ -10,7 +10,7 @@
 - **REPL支持**: 交互式编程环境
 - **内置函数**: 丰富的内置函数库
 
-## 快速开始
+### 快速开始
 ```sh
 zn -h       # 获取帮助
 
@@ -19,7 +19,7 @@ zn          # 启动交互式REPL
 zn file.zns # 运行脚本文件
 ```
 
-## 语法内容
+### 语法内容
 
 ```javascript
 //hello world
@@ -57,17 +57,19 @@ while i < 10 {
 ```
 
 <details>
-<summary>数据类型</summary>
+<summary><b>数据类型</b></summary>
 
-- **I64**: 64位整数
-- **F64**: 64位浮点数
-- **Str**: 字符串
-- **List**: 列表
-- **Null**: 空值
+<table>
+  <tr><td><code>i64</code></td><td>64位整数</td></tr>
+  <tr><td><code>f64</code></td><td>64位浮点数</td></tr>
+  <tr><td><code>str</code></td><td>字符串</td></tr>
+  <tr><td><code>list</code></td><td>列表</td></tr>
+  <tr><td><code>null</code></td><td>空值</td></tr>
+</table>
 </details>
 
 <details>
-<summary>内置函数</summary>
+<summary><b>内置函数</b></summary>
 
 | 函数 | 说明 |
 |--|--|
@@ -89,7 +91,7 @@ while i < 10 {
 </details>
 
 <details>
-<summary>常量</summary>
+<summary><b>常量</b></summary>
 
 | 常量 | 值 |
 |--|--|
@@ -98,7 +100,7 @@ while i < 10 {
 </details>
 
 <details>
-<summary>运算符</summary>
+<summary><b>运算符</b></summary>
 
 | 运算符 | 说明 |
 |--|--|
