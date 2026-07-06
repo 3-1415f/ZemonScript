@@ -311,141 +311,141 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
 
 std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_type, f_repl, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
 
-void eval(const std::vector<Op>& cmds, Atom *stack) {
+void eval(const std::vector<Op>& ops, Atom *stack) {
   Atom *pvar = &vars[0];
-  Atom *stack_top = stack;
+  Atom *top = stack;
   const char *err;
+  const Op *pcmd = &ops[0];
 
-  for (const Op *p_op = &cmds[0];; p_op++) {
-    L1:
-    Op cmd = *p_op;
+  while (1) {
+    Op cmd = *pcmd;
     switch (cmd.type) {
       case OpType::Pop:
-        (--stack_top)->~Atom();
+        (--top)->~Atom();
         break;
 
       case OpType::Null:
-        (stack_top++)->type = AtomType::Null;
+        (top++)->type = AtomType::Null;
         break;
       case OpType::Str:
-        stack_top->type = AtomType::Str;
-        new (&stack_top++->val.str) std::string(cmd.val.str);
+        top->type = AtomType::Str;
+        new (&top++->val.str) std::string(cmd.val.str);
         break;
       case OpType::I64:
-        stack_top->type = AtomType::I64;
-        (stack_top++)->val.i64 = cmd.val.i64;
+        top->type = AtomType::I64;
+        (top++)->val.i64 = cmd.val.i64;
         break;
       case OpType::F64:
-        stack_top->type = AtomType::F64;
-        (stack_top++)->val.f64 = cmd.val.f64;
+        top->type = AtomType::F64;
+        (top++)->val.f64 = cmd.val.f64;
         break;
 
       case OpType::Var:
         if (pvar[cmd.val.usize].type == AtomType::None) {err = "NameError: variable not found"; goto E2;}
-        new (stack_top++) Atom(pvar[cmd.val.usize]);
+        new (top++) Atom(pvar[cmd.val.usize]);
         break;
       case OpType::Asg:
-        pvar[cmd.val.usize] = stack_top[-1];
+        pvar[cmd.val.usize] = top[-1];
         break;
       case OpType::AsgPop:
-        pvar[cmd.val.usize] = std::move(*--stack_top);
-        stack_top->~Atom();
+        pvar[cmd.val.usize] = std::move(*--top);
+        top->~Atom();
         break;
 
       case OpType::Call: {
-        Atom *atom = stack_top - cmd.val.usize;
+        Atom *atom = top - cmd.val.usize;
         if ((atom-1)->type != AtomType::StdFn) {err = "TypeError: bad value type for function call"; goto E2;}
         (atom-1)->val.stdfn(cmd.val.usize, atom);
-        for (Atom *a = atom; a != stack_top; a++) a->~Atom();
-        stack_top = atom;
+        for (Atom *a = atom; a != top; a++) a->~Atom();
+        top = atom;
         break;
       }
       case OpType::List: {
         std::vector<Atom> list;
-        std::move(stack_top - cmd.val.usize, stack_top, std::back_inserter(list));
-        // for (Atom *a = stack_top - cmd.val.usize; a != stack_top; a++) a->~Atom();
-        stack_top = stack_top - cmd.val.usize;
-        new (stack_top++) Atom(std::move(list));
+        std::move(top - cmd.val.usize, top, std::back_inserter(list));
+        // for (Atom *a = top - cmd.val.usize; a != top; a++) a->~Atom();
+        top = top - cmd.val.usize;
+        new (top++) Atom(std::move(list));
         break;
       }
       case OpType::Jmp:
-        p_op += cmd.val.size;
-        goto L1;
+        pcmd += cmd.val.size;
+        continue;
       case OpType::Jift:
-        --stack_top;
-        if (stack_top->type == AtomType::I64) {
-          if (!stack_top->val.i64) break;
-          p_op += cmd.val.size;
-          goto L1;
+        --top;
+        if (top->type == AtomType::I64) {
+          if (!top->val.i64) break;
+          pcmd += cmd.val.size;
+          continue;
         }
-        if (atob(*stack_top)) {
-          p_op += cmd.val.size;
-          stack_top->~Atom();
-          goto L1;
+        if (atob(*top)) {
+          pcmd += cmd.val.size;
+          top->~Atom();
+          continue;
         }
-        stack_top->~Atom();
+        top->~Atom();
         break;
       case OpType::Jiff:
-        --stack_top;
-        if (stack_top->type == AtomType::I64) {
-          if (stack_top->val.i64) break;
-          p_op += cmd.val.size;
-          goto L1;
+        --top;
+        if (top->type == AtomType::I64) {
+          if (top->val.i64) break;
+          pcmd += cmd.val.size;
+          continue;
         }
-        if (atob(*stack_top)) {
-          stack_top->~Atom();
+        if (atob(*top)) {
+          top->~Atom();
           break;
         }
-        p_op += cmd.val.size;
-        stack_top->~Atom();
-        goto L1;
+        pcmd += cmd.val.size;
+        top->~Atom();
+        continue;
 
       case OpType::Lnot: {
-        Atom *a = stack_top - 1;
-        switch (a->type) {
+        Atom& a = top[-1];
+        switch (a.type) {
           case AtomType::Null:
-            a->type = AtomType::I64;
-            a->val.i64 = 1;
+            a.type = AtomType::I64;
+            a.val.i64 = 1;
             break;
           case AtomType::I64:
-            a->val.i64 = !a->val.i64;
+            a.val.i64 = !a.val.i64;
             break;
           case AtomType::F64:
-            a->type = AtomType::I64;
-            a->val.i64 = !a->val.f64;
+            a.type = AtomType::I64;
+            a.val.i64 = !a.val.f64;
             break;
           case AtomType::Str: {
-            bool b = a->val.str.empty();
-            a->val.str.std::string::~string();
-            a->type = AtomType::I64;
-            a->val.i64 = b;
+            bool b = a.val.str.empty();
+            a.val.str.std::string::~string();
+            a.type = AtomType::I64;
+            a.val.i64 = b;
             break;
           }
           case AtomType::List: {
-            bool b = a->val.list.empty();
-            a->val.list.std::vector<Atom>::~vector();
-            a->type = AtomType::I64;
-            a->val.i64 = b;
+            bool b = a.val.list.empty();
+            a.val.list.std::vector<Atom>::~vector();
+            a.type = AtomType::I64;
+            a.val.i64 = b;
             break;
           }
           case AtomType::StdFn:
-            a->type = AtomType::I64;
-            a->val.i64 = 1;
+            a.type = AtomType::I64;
+            a.val.i64 = 1;
             break;
           default: {err = "TypeError: bad value type for operator '!'"; goto E2;}
         }
         break;
       }
       case OpType::Bnot: {
-        Atom* a = stack_top - 1;
+        Atom* a = top - 1;
         if (a->type == AtomType::I64) a->val.i64 = ~a->val.i64;
         else {err = "TypeError: bad value type for operator '~'"; goto E2;}
         break;
       }
 
       case OpType::Pow: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = pow(a.val.i64, b.val.i64);
@@ -463,8 +463,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Mul: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 *= b.val.i64;
@@ -488,8 +488,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Div: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 /= b.val.i64;
@@ -506,8 +506,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Mod: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 % b.val.i64;
@@ -525,8 +525,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Add: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 += b.val.i64;
@@ -551,8 +551,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Sub: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 -= b.val.i64;
@@ -571,16 +571,16 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Shl: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64 && b.type == AtomType::I64)
           a.val.i64 <<= b.val.i64;
         else {err = "TypeError: bad value type for operator '<<'"; goto E1;}
         break;
       }
       case OpType::Shr: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64 && b.type == AtomType::I64)
           a.val.i64 >>= b.val.i64;
         else {err = "TypeError: bad value type for operator '>>'"; goto E1;}
@@ -588,8 +588,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Lt: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 < b.val.i64;
@@ -607,8 +607,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Le: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 <= b.val.i64;
@@ -627,8 +627,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Gt: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 > b.val.i64;
@@ -646,8 +646,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Ge: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 >= b.val.i64;
@@ -666,8 +666,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Ne: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 != b.val.i64;
@@ -686,8 +686,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Eq: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64)
           if (b.type == AtomType::I64)
             a.val.i64 = a.val.i64 == b.val.i64;
@@ -707,8 +707,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Band: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64 && b.type == AtomType::I64)
           a.val.i64 &= b.val.i64;
         else if (a.type == AtomType::List) {
@@ -719,16 +719,16 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         break;
       }
       case OpType::Bxor: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64 && b.type == AtomType::I64)
           a.val.i64 ^= b.val.i64;
         else {err = "TypeError: bad value type for operator '^'"; goto E1;}
         break;
       }
       case OpType::Bor: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::I64 && b.type == AtomType::I64)
           a.val.i64 |= b.val.i64;
         else {err = "TypeError: bad value type for operator '|'"; goto E1;}
@@ -736,8 +736,8 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Ind: {
-        Atom& b = *(--stack_top);
-        Atom& a = *(stack_top-1);
+        Atom& b = *(--top);
+        Atom& a = *(top-1);
         if (a.type == AtomType::Str && b.type == AtomType::I64) {
           if (b.val.i64 >= a.val.str.size()) {err = "IndexError: index out of range"; goto E1;}
           a.val.str = a.val.str[b.val.i64];
@@ -751,33 +751,34 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       }
 
       case OpType::Land:
-        --stack_top;
-        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : atob(*stack_top)) {
-          stack_top->~Atom();
+        --top;
+        if (top->type == AtomType::I64 ? top->val.i64 : atob(*top)) {
+          top->~Atom();
           break;
         }
-        stack_top++;
-        p_op += cmd.val.size;
-        goto L1;
+        top++;
+        pcmd += cmd.val.size;
+        continue;
       case OpType::Lor: {
-        --stack_top;
-        if (stack_top->type == AtomType::I64 ? stack_top->val.i64 : atob(*stack_top)) {
-          stack_top->~Atom();
-          p_op += cmd.val.size;
-          goto L1;
+        --top;
+        if (top->type == AtomType::I64 ? top->val.i64 : atob(*top)) {
+          top->~Atom();
+          pcmd += cmd.val.size;
+          continue;
         }
-        stack_top->~Atom();
+        top->~Atom();
         break;
       }
 
       case OpType::End:
         return;
     }
+    pcmd++;
   }
   E1:
-  stack_top->~Atom();
+  top->~Atom();
   E2:
-  for (Atom *it = stack; it < stack_top; it++) it->~Atom();
+  for (Atom *it = stack; it < top; it++) it->~Atom();
   throw err;
 }
 
