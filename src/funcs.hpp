@@ -24,6 +24,20 @@ void f_str(size_t argc, Atom* atoms) {
   atoms[-1].type = AtomType::Str;
   atoms[-1].val.str = atos(*atoms);
 }
+
+void f_type(size_t argc, Atom* atoms) {
+  if (argc != 1) throw "ArgError: expect 1 argument";
+  atoms[-1].type = AtomType::Str;
+  switch (atoms->type) {
+    case AtomType::Null: atoms[-1].val.str = "null"; break;
+    case AtomType::I64: atoms[-1].val.str = "int"; break;
+    case AtomType::F64: atoms[-1].val.str = "float"; break;
+    case AtomType::Str: atoms[-1].val.str = "str"; break;
+    case AtomType::List: atoms[-1].val.str = "list"; break;
+    case AtomType::StdFn: atoms[-1].val.str = "function"; break;
+  }
+}
+
 void f_repl(size_t argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::Str;

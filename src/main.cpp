@@ -57,7 +57,7 @@ short infix(Symbol op) {
   }
 }
 
-std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
+std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "type", "repl", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
 
 void expr(std::vector<Token>& tokens, std::vector<Op>& output, short expr_bp, size_t& stack_size, size_t& stack_max_size);
 
@@ -309,7 +309,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
   }
 }
 
-std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
+std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_type, f_repl, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
 
 void eval(const std::vector<Op>& cmds, Atom *stack) {
   Atom *pvar = &vars[0];

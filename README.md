@@ -62,12 +62,16 @@ while i < 10 {
 <summary><b>数据类型</b></summary>
 
 <table>
-  <tr><td><code>i64</code></td><td>64位整数</td></tr>
-  <tr><td><code>f64</code></td><td>64位浮点数</td></tr>
+  <tr><td><code>null</code></td><td>空值</td></tr>
+  <tr><td><code>int</code></td><td>64位整数</td></tr>
+  <tr><td><code>float</code></td><td>64位浮点数</td></tr>
   <tr><td><code>str</code></td><td>字符串</td></tr>
   <tr><td><code>list</code></td><td>列表</td></tr>
-  <tr><td><code>null</code></td><td>空值</td></tr>
+  <tr><td><code>function</code></td><td>函数</td></tr>
 </table>
+
+- 使用 `type(val)` 函数获取变量类型
+
 </details>
 
 <details>
@@ -75,9 +79,11 @@ while i < 10 {
 
 | 函数 | 说明 |
 |--|--|
-| `bool(x)` | 转换为布尔值 |
-| `int(x)` | 转换为整数 |
-| `str(x)` | 转换为字符串 |
+| `bool(val)` | 转换为布尔值 |
+| `int(val)` | 转换为整数 |
+| `str(val)` | 转换为字符串 |
+| `type(val)` | 获取变量类型 |
+| `repl(val)` | 格式化为字符串 |
 | `out(...)` | 输出内容 |
 | `outln(...)` | 输出内容并换行 |
 | `input(prompt)` | 读取用户输入 |
