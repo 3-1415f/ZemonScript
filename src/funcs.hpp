@@ -22,26 +22,26 @@ void f_int(size_t argc, Atom* atoms) {
 void f_str(size_t argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::Str;
-  atoms[-1].val.str = atos(*atoms);
+  new(&atoms[-1].val.str) std::string(atos(*atoms));
 }
 
 void f_type(size_t argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::Str;
   switch (atoms->type) {
-    case AtomType::Null: atoms[-1].val.str = "null"; break;
-    case AtomType::I64: atoms[-1].val.str = "int"; break;
-    case AtomType::F64: atoms[-1].val.str = "float"; break;
-    case AtomType::Str: atoms[-1].val.str = "str"; break;
-    case AtomType::List: atoms[-1].val.str = "list"; break;
-    case AtomType::StdFn: atoms[-1].val.str = "function"; break;
+    case AtomType::Null: new(&atoms[-1].val.str) std::string("null"); break;
+    case AtomType::I64: new(&atoms[-1].val.str) std::string("int"); break;
+    case AtomType::F64: new(&atoms[-1].val.str) std::string("float"); break;
+    case AtomType::Str: new(&atoms[-1].val.str) std::string("str"); break;
+    case AtomType::List: new(&atoms[-1].val.str) std::string("list"); break;
+    case AtomType::StdFn: new(&atoms[-1].val.str) std::string("function"); break;
   }
 }
 
 void f_repl(size_t argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::Str;
-  atoms[-1].val.str = arepl(*atoms);
+  new(&atoms[-1].val.str) std::string(arepl(*atoms));
 }
 
 void f_out(size_t argc, Atom* atoms) {
@@ -61,7 +61,7 @@ void f_input(size_t argc, Atom* atoms) {
   std::string str;
   std::getline(std::cin, str);
   atoms[-1].type = AtomType::Str;
-  atoms[-1].val.str = str;
+  new(&atoms[-1].val.str) std::string(str);
 }
 
 void f_clock(size_t argc, Atom* atoms) {

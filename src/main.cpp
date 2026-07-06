@@ -327,10 +327,6 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
       case OpType::Null:
         (top++)->type = AtomType::Null;
         break;
-      case OpType::Str:
-        top->type = AtomType::Str;
-        new (&top++->val.str) std::string(cmd.val.str);
-        break;
       case OpType::I64:
         top->type = AtomType::I64;
         (top++)->val.i64 = cmd.val.i64;
@@ -338,6 +334,10 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
       case OpType::F64:
         top->type = AtomType::F64;
         (top++)->val.f64 = cmd.val.f64;
+        break;
+      case OpType::Str:
+        top->type = AtomType::Str;
+        new (&top++->val.str) std::string(cmd.val.str);
         break;
 
       case OpType::Var:
@@ -363,7 +363,7 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
       case OpType::List: {
         std::vector<Atom> list;
         std::move(top - cmd.val.usize, top, std::back_inserter(list));
-        // for (Atom *a = top - cmd.val.usize; a != top; a++) a->~Atom();
+        for (Atom *a = top - cmd.val.usize; a != top; a++) a->~Atom();
         top = top - cmd.val.usize;
         new (top++) Atom(std::move(list));
         break;
