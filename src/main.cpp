@@ -323,7 +323,7 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
       case OpType::Pop:
         (--stack_top)->~Atom();
         break;
-        
+
       case OpType::Null:
         (stack_top++)->type = AtomType::Null;
         break;
@@ -442,310 +442,310 @@ void eval(const std::vector<Op>& cmds, Atom *stack) {
         else {err = "TypeError: bad value type for operator '~'"; goto E2;}
         break;
       }
-      
+
       case OpType::Pow: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = pow(a->val.i64, b->val.i64);
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = pow(a->val.i64, b->val.f64);
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = pow(a.val.i64, b.val.i64);
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = pow(a.val.i64, b.val.f64);
           else {err = "TypeError: bad value type for operator '**'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 = pow(a->val.f64, b->val.i64);
-          else if (b->type == AtomType::F64)
-            a->val.f64 = pow(a->val.f64, b->val.f64);
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 = pow(a.val.f64, b.val.i64);
+          else if (b.type == AtomType::F64)
+            a.val.f64 = pow(a.val.f64, b.val.f64);
           else {err = "TypeError: bad value type for operator '**'"; goto E1;}
         else {err = "TypeError: bad value type for operator '**'"; goto E1;}
         break;
       }
       case OpType::Mul: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 *= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = a->val.i64 * b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 *= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = a.val.i64 * b.val.f64;
           else {err = "TypeError: bad value type for operator '*'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 *= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.f64 *= b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 *= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.f64 *= b.val.f64;
           else {err = "TypeError: bad value type for operator '*'"; goto E1;}
-        else if (a->type == AtomType::Str && b->type == AtomType::I64) {
-          if (b->val.i64 < 0) {err = "ArgError: bad argument range for operator '*'"; goto E2;}
-          if (b->val.i64 == 0) {a->val.str = ""; break;}
-          std::string s = a->val.str;
-          while (--b->val.i64) a->val.str += s;
+        else if (a.type == AtomType::Str && b.type == AtomType::I64) {
+          if (b.val.i64 < 0) {err = "ArgError: bad argument range for operator '*'"; goto E2;}
+          if (b.val.i64 == 0) {a.val.str = ""; break;}
+          std::string s = a.val.str;
+          while (--b.val.i64) a.val.str += s;
         }
         else {err = "TypeError: bad value type for operator '*'"; goto E1;}
         break;
       }
       case OpType::Div: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 /= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = a->val.i64 / b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 /= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = a.val.i64 / b.val.f64;
           else {err = "TypeError: bad value type for operator '/'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 /= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.f64 /= b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 /= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.f64 /= b.val.f64;
           else {err = "TypeError: bad value type for operator '/'"; goto E1;}
         break;
       }
       case OpType::Mod: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 % b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = fmod(a->val.i64, b->val.f64);
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 % b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = fmod(a.val.i64, b.val.f64);
           else {err = "TypeError: bad value type for operator '%'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 = fmod(a->val.f64, b->val.i64);
-          else if (b->type == AtomType::F64)
-            a->val.f64 = fmod(a->val.f64, b->val.f64);
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 = fmod(a.val.f64, b.val.i64);
+          else if (b.type == AtomType::F64)
+            a.val.f64 = fmod(a.val.f64, b.val.f64);
           else {err = "TypeError: bad value type for operator '%'"; goto E1;}
         break;
       }
 
       case OpType::Add: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 += b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = a->val.i64 + b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 += b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = a.val.i64 + b.val.f64;
           else {err = "TypeError: bad value type for operator '+'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 += b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.f64 += b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 += b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.f64 += b.val.f64;
           else {err = "TypeError: bad value type for operator '+'"; goto E1;}
-        else if (a->type == AtomType::Str && b->type == AtomType::Str) {a->val.str += b->val.str;
-          b->val.str.std::string::~string();
+        else if (a.type == AtomType::Str && b.type == AtomType::Str) {a.val.str += b.val.str;
+          b.val.str.std::string::~string();
         }
-        else if (a->type == AtomType::List && b->type == AtomType::List) {
-          a->val.list.insert(a->val.list.end(), std::make_move_iterator(b->val.list.begin()), std::make_move_iterator(b->val.list.end()));
-          b->val.list.std::vector<Atom>::~vector();
+        else if (a.type == AtomType::List && b.type == AtomType::List) {
+          a.val.list.insert(a.val.list.end(), std::make_move_iterator(b.val.list.begin()), std::make_move_iterator(b.val.list.end()));
+          b.val.list.std::vector<Atom>::~vector();
         }
         else throw "TypeError: bad value type for operator '+'";
         break;
       }
       case OpType::Sub: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 -= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::F64,
-            a->val.f64 = a->val.i64 - b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 -= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::F64,
+            a.val.f64 = a.val.i64 - b.val.f64;
           else {err = "TypeError: bad value type for operator '-'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.f64 -= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.f64 -= b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.f64 -= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.f64 -= b.val.f64;
           else {err = "TypeError: bad value type for operator '-'"; goto E1;}
         else throw "TypeError: bad value type for operator '-'";
         break;
       }
 
       case OpType::Shl: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64 && b->type == AtomType::I64)
-          a->val.i64 <<= b->val.i64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64 && b.type == AtomType::I64)
+          a.val.i64 <<= b.val.i64;
         else {err = "TypeError: bad value type for operator '<<'"; goto E1;}
         break;
       }
       case OpType::Shr: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64 && b->type == AtomType::I64)
-          a->val.i64 >>= b->val.i64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64 && b.type == AtomType::I64)
+          a.val.i64 >>= b.val.i64;
         else {err = "TypeError: bad value type for operator '>>'"; goto E1;}
         break;
       }
 
       case OpType::Lt: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 < b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 < b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 < b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 < b.val.f64;
           else {err = "TypeError: bad value type for operator '<'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.f64 < b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 < b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.f64 < b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 < b.val.f64;
           else {err = "TypeError: bad value type for operator '<'"; goto E1;}
         else throw "TypeError: bad value type for operator '<'";
         break;
       }
       case OpType::Le: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 <= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 <= b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 <= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 <= b.val.f64;
           else {err = "TypeError: bad value type for operator '<='"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 <= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 <= b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 <= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 <= b.val.f64;
           else {err = "TypeError: bad value type for operator '<='"; goto E1;}
         else {err = "TypeError: bad value type for operator '<='"; goto E1;}
         break;
       }
       case OpType::Gt: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 > b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 > b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 > b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 > b.val.f64;
           else {err = "TypeError: bad value type for operator '>'"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.f64 > b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 > b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.f64 > b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 > b.val.f64;
           else {err = "TypeError: bad value type for operator '>'"; goto E1;}
         else {err = "TypeError: bad value type for operator '>'"; goto E1;}
         break;
       }
       case OpType::Ge: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 >= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 >= b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 >= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 >= b.val.f64;
           else {err = "TypeError: bad value type for operator '>='"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 >= b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 >= b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 >= b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 >= b.val.f64;
           else {err = "TypeError: bad value type for operator '>='"; goto E1;}
         else {err = "TypeError: bad value type for operator '>='"; goto E1;}
         break;
       }
       case OpType::Ne: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 != b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 != b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 != b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 != b.val.f64;
           else {err = "TypeError: bad value type for operator '!='"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 != b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 != b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 != b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 != b.val.f64;
           else {err = "TypeError: bad value type for operator '!='"; goto E1;}
         else {err = "TypeError: bad value type for operator '!='"; goto E1;}
         break;
       }
       case OpType::Eq: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64)
-          if (b->type == AtomType::I64)
-            a->val.i64 = a->val.i64 == b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->val.i64 = a->val.i64 == b->val.f64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64)
+          if (b.type == AtomType::I64)
+            a.val.i64 = a.val.i64 == b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.val.i64 = a.val.i64 == b.val.f64;
           else {err = "TypeError: bad value type for operator '=='"; goto E1;}
-        else if (a->type == AtomType::F64)
-          if (b->type == AtomType::I64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 == b->val.i64;
-          else if (b->type == AtomType::F64)
-            a->type = AtomType::I64,
-            a->val.i64 = a->val.f64 == b->val.f64;
+        else if (a.type == AtomType::F64)
+          if (b.type == AtomType::I64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 == b.val.i64;
+          else if (b.type == AtomType::F64)
+            a.type = AtomType::I64,
+            a.val.i64 = a.val.f64 == b.val.f64;
           else {err = "TypeError: bad value type for operator '=='"; goto E1;}
         else {err = "TypeError: bad value type for operator '=='"; goto E1;}
         break;
       }
 
       case OpType::Band: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64 && b->type == AtomType::I64)
-          a->val.i64 &= b->val.i64;
-        else if (a->type == AtomType::List) {
-          a->val.list.push_back(std::move(*b));
-          b->~Atom();
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64 && b.type == AtomType::I64)
+          a.val.i64 &= b.val.i64;
+        else if (a.type == AtomType::List) {
+          a.val.list.push_back(std::move(b));
+          b.~Atom();
         }
         else {err = "TypeError: bad value type for operator '&'"; goto E1;}
         break;
       }
       case OpType::Bxor: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64 && b->type == AtomType::I64)
-          a->val.i64 ^= b->val.i64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64 && b.type == AtomType::I64)
+          a.val.i64 ^= b.val.i64;
         else {err = "TypeError: bad value type for operator '^'"; goto E1;}
         break;
       }
       case OpType::Bor: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::I64 && b->type == AtomType::I64)
-          a->val.i64 |= b->val.i64;
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::I64 && b.type == AtomType::I64)
+          a.val.i64 |= b.val.i64;
         else {err = "TypeError: bad value type for operator '|'"; goto E1;}
         break;
       }
 
       case OpType::Ind: {
-        Atom* b = --stack_top;
-        Atom* a = stack_top-1;
-        if (a->type == AtomType::Str && b->type == AtomType::I64) {
-          if (b->val.i64 >= a->val.str.size()) {err = "IndexError: index out of range"; goto E1;}
-          a->val.str = a->val.str[b->val.i64];
-        } else if (a->type == AtomType::List && b->type == AtomType::I64) {
-          if (b->val.i64 >= a->val.list.size()) {err = "IndexError: index out of range"; goto E1;}
-          Atom item = a->val.list[b->val.i64];
-          a->val.list.std::vector<Atom>::~vector();
-          new (a) Atom(std::move(item));
+        Atom& b = *(--stack_top);
+        Atom& a = *(stack_top-1);
+        if (a.type == AtomType::Str && b.type == AtomType::I64) {
+          if (b.val.i64 >= a.val.str.size()) {err = "IndexError: index out of range"; goto E1;}
+          a.val.str = a.val.str[b.val.i64];
+        } else if (a.type == AtomType::List && b.type == AtomType::I64) {
+          if (b.val.i64 >= a.val.list.size()) {err = "IndexError: index out of range"; goto E1;}
+          Atom item = a.val.list[b.val.i64];
+          a.val.list.std::vector<Atom>::~vector();
+          new (&a) Atom(std::move(item));
         } else {err = "TypeError: bad value type for operator '[]'"; goto E1;}
         break;
       }

@@ -45,7 +45,7 @@ struct Atom {
     ~Val() {}
   } val;
 
-  Atom(const Atom& a) : type(a.type) {
+  Atom(const Atom& a) noexcept : type(a.type) {
     if (a.type == AtomType::I64)
       val.i64 = a.val.i64;
     else if (a.type == AtomType::F64)
@@ -59,7 +59,7 @@ struct Atom {
     else type = AtomType::Null;
   }
 
-  Atom(Atom&& a) : type(a.type) {
+  Atom(Atom&& a) noexcept : type(a.type) {
     if (a.type == AtomType::I64)
       val.i64 = a.val.i64;
     else if (a.type == AtomType::F64)
@@ -73,7 +73,7 @@ struct Atom {
     else type = AtomType::Null;
   }
 
-  Atom& operator=(const Atom& a) {
+  Atom& operator=(const Atom& a) noexcept {
     if (this == &a) return *this;
 
     if (type == AtomType::Str)
@@ -97,7 +97,7 @@ struct Atom {
     return *this;
   }
 
-  Atom& operator=(Atom&& a) {
+  Atom& operator=(Atom&& a) noexcept {
     if (this == &a) return *this;
 
     if (type == AtomType::Str)
@@ -121,20 +121,20 @@ struct Atom {
     return *this;
   }
 
-  ~Atom() {
+  ~Atom() noexcept {
     if (type == AtomType::Str)
       val.str.std::string::~string();
     else if (type == AtomType::List)
       val.list.std::vector<Atom>::~vector();
   }
 
-  Atom() : type(AtomType::None) {val.i64 = 0;}
-  Atom(AtomType t) : type(t) {val.i64 = 0;}
-  Atom(long long v) : type(AtomType::I64) { val.i64 = v; }
-  Atom(double v) : type(AtomType::F64) { val.f64 = v; }
-  Atom(const std::string& v) : type(AtomType::Str) { new (&val.str) std::string(v); }
-  Atom(const std::vector<Atom>& v) : type(AtomType::List) { new (&val.list) std::vector<Atom>(v); }
-  Atom(ZnStdFn v) : type(AtomType::StdFn) { val.stdfn = v; }
+  Atom() noexcept : type(AtomType::None) {val.i64 = 0;}
+  Atom(AtomType t) noexcept : type(t) {val.i64 = 0;}
+  Atom(long long v) noexcept : type(AtomType::I64) { val.i64 = v; }
+  Atom(double v) noexcept : type(AtomType::F64) { val.f64 = v; }
+  Atom(const std::string& v) noexcept : type(AtomType::Str) { new (&val.str) std::string(v); }
+  Atom(const std::vector<Atom>& v) noexcept : type(AtomType::List) { new (&val.list) std::vector<Atom>(v); }
+  Atom(ZnStdFn v) noexcept : type(AtomType::StdFn) { val.stdfn = v; }
 };
 
 enum class TokenType : char  { Null, Atom, Symbol, Id };
@@ -148,7 +148,7 @@ struct Token {
     ~Val() {}
   } val;
 
-  Token(const Token& t) : type(t.type) {
+  Token(const Token& t) noexcept : type(t.type) {
     if (t.type == TokenType::Atom)
       new (&val.atom) Atom(t.val.atom);
     else if (t.type == TokenType::Symbol)
@@ -157,18 +157,6 @@ struct Token {
       new (&val.id) std::string(t.val.id);
     else type = TokenType::Null;
   }
-
-  ~Token() {
-    if (type == TokenType::Id)
-      val.id.std::string::~string();
-    if (type == TokenType::Atom)
-      val.atom.~Atom();
-  }
-
-  Token() : type(TokenType::Null) {}
-  Token(const Atom& v) : type(TokenType::Atom) { new (&val.atom) Atom(v); }
-  Token(const Symbol& v) : type(TokenType::Symbol) { val.sym = v; }
-  Token(const std::string& v) : type(TokenType::Id) { new (&val.id) std::string(v); }
 
   Token(Token&& other) noexcept : type(other.type) {
     if (other.type == TokenType::Atom)
@@ -193,6 +181,19 @@ struct Token {
     other.type = TokenType::Null;
     return *this;
   }
+
+  ~Token() noexcept {
+    if (type == TokenType::Id)
+      val.id.std::string::~string();
+    if (type == TokenType::Atom)
+      val.atom.~Atom();
+  }
+
+  Token() noexcept : type(TokenType::Null) {}
+  Token(const Atom& v) noexcept : type(TokenType::Atom) { new (&val.atom) Atom(v); }
+  Token(const Symbol& v) noexcept : type(TokenType::Symbol) { val.sym = v; }
+  Token(const std::string& v) noexcept : type(TokenType::Id) { new (&val.id) std::string(v); }
+
 };
 
 namespace std {
@@ -214,7 +215,7 @@ struct Op {
     Val() {}
     ~Val() {}
   } val;
-  Op(const Op& o) : type(o.type) {
+  Op(const Op& o) noexcept : type(o.type) {
     if (type == OpType::Str)
       new (&val.str) std::string(o.val.str);
     else if (type == OpType::I64)
@@ -226,7 +227,7 @@ struct Op {
     else if (type >= OpType::Jmp && type <= OpType::Lor)
       val.size = o.val.size;
   }
-  Op& operator=(const Op& o) {
+  Op& operator=(const Op& o) noexcept {
     if (this == &o) return *this;
 
     if (type == OpType::Str)
@@ -245,16 +246,16 @@ struct Op {
       val.size = o.val.size;
     return *this;
   }
-  ~Op() {
+  ~Op() noexcept {
     if (type == OpType::Str)
       val.str.std::string::~string();
   }
-  Op(OpType type) : type(type) {}
-  Op(std::string str) : type(OpType::Str) {new (&val.str) std::string(str);}
-  Op(long long i64) : type(OpType::I64) { val.i64 = i64; }
-  Op(double f64) : type(OpType::F64) { val.f64 = f64; }
-  Op(OpType type, size_t usize) : type(type) { val.usize = usize; }
-  Op(OpType type, ssize_t size) : type(type) { val.size = size; }
+  Op(OpType type) noexcept : type(type) {}
+  Op(std::string str) noexcept : type(OpType::Str) {new (&val.str) std::string(str);}
+  Op(long long i64) noexcept : type(OpType::I64) { val.i64 = i64; }
+  Op(double f64) noexcept : type(OpType::F64) { val.f64 = f64; }
+  Op(OpType type, size_t usize) noexcept : type(type) { val.usize = usize; }
+  Op(OpType type, ssize_t size) noexcept : type(type) { val.size = size; }
 };
 
 #endif
