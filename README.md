@@ -1,5 +1,5 @@
 ## ZemonScript
-一个简单、轻量、快速的解释器，用于 Zemon (Zn) (*.zns) 语言。设计用于快速脚本编写和教育目的，具有直观简洁的语法。
+一个简单、轻量、快速的解释器，用于 `Zemon` `(*.zns)` 语言。设计用于快速脚本编写和教育目的，具有直观简洁的语法。
 
 [![GitHub release](https://img.shields.io/github/release/3-1415f/ZemonScript.svg)](https://github.com/3-1415f/ZemonScript/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -19,7 +19,9 @@ zn          # 启动交互式REPL
 zn file.zns # 运行脚本文件
 ```
 
-### 语法内容
+> 在线体验: https://zn-std.netlify.app
+
+### 示例
 
 ```javascript
 //hello world
