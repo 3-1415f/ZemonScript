@@ -14,7 +14,7 @@ enum class Symbol : char {
   Band, Bxor, Bor, Land, Lor,
   Lpar, Rpar, Lbrk, Rbrk, Lbkl, Rbkl,
   Sep, Eos, Asg, Cmn, Qst,
-  If, Elif, Else, While,
+  Do, If, Elif, Else, While, Break, Continue,
 };
 
 enum class OpType : char {

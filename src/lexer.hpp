@@ -3,7 +3,7 @@
 
 #include "includes.hpp"
 
-std::vector<Token> tokenize(const std::string& input) {
+std::vector<Token> lex(const std::string& input) {
   std::vector<Token> tokens;
   const size_t len = input.size();
   size_t i = 0;
@@ -88,10 +88,13 @@ std::vector<Token> tokenize(const std::string& input) {
       if (s == "null") tokens.emplace_back(Atom{AtomType::Null});
       else if (s == "true") tokens.emplace_back(Atom{1ll});
       else if (s == "false") tokens.emplace_back(Atom{0ll});
+      else if (s == "do") tokens.emplace_back(Symbol::Do);
       else if (s == "if") tokens.emplace_back(Symbol::If);
       else if (s == "elif") tokens.emplace_back(Symbol::Elif);
       else if (s == "else") tokens.emplace_back(Symbol::Else);
       else if (s == "while") tokens.emplace_back(Symbol::While);
+      else if (s == "break") tokens.emplace_back(Symbol::Break);
+      else if (s == "continue") tokens.emplace_back(Symbol::Continue);
       else tokens.emplace_back(s);
     } else switch (c) {
       case '/':

@@ -1,5 +1,6 @@
 #ifndef ZN_TYPE_HPP
 #define ZN_TYPE_HPP
+
 #include "includes.hpp"
 
 std::string ftos(double v) {
@@ -128,7 +129,10 @@ std::string otos(Op op) {
     case OpType::AsgInd: return "[]=";
     case OpType::End: return "END";
     case OpType::Pop: return "POP";
-    // case OpType::Atom: return arepl(op.val.atom);
+    case OpType::Null: return "null";
+    case OpType::Str: return op.val.str;
+    case OpType::I64: return std::to_string(op.val.i64);
+    case OpType::F64: return ftos(op.val.f64);
     case OpType::Var: return '#' + std::to_string(op.val.usize);
     case OpType::Asg: return "=#" + std::to_string(op.val.usize);
     case OpType::Call: return "CALL," + std::to_string(op.val.usize);

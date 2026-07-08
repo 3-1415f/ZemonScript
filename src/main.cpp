@@ -59,91 +59,148 @@ short infix(Symbol op) {
 
 std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "type", "repl", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
 
-void expr(std::vector<Token>& tokens, std::vector<Op>& output, short expr_bp, size_t& stack_size, size_t& stack_max_size);
+void expr(std::vector<Token>& tokens, std::vector<Op>& output, short expr_bp, size_t& stacksize, size_t& maxstacksize);
 
-void expr_stmt(std::vector<Token>& tokens, std::vector<Op>& output, size_t& stack_size, size_t& stack_max_size, bool in_main = false) {
+struct expr_stmt_args {
+  std::vector<Token> tokens;
+  std::vector<Op> output;
+  size_t stacksize;
+  size_t maxstacksize;
+  std::vector<size_t> break_list;
+  std::vector<size_t> continue_list;
+};
+
+void expr_stmt(expr_stmt_args& args, bool in_main = false) {
   if (!in_main) {
-    if (peek(tokens).type == TokenType::Null)
+    if (peek(args.tokens).type == TokenType::Null)
       if (repl) throw 1;
       else throw "SyntaxError: statement not terminated, expect '{'";
-    if (next(tokens).val.sym != Symbol::Lbkl) {
+    if (next(args.tokens).val.sym != Symbol::Lbkl) {
       throw "SyntaxError: bad operator, expect '{'";
     }
   }
+
   while (1) {
-    if (peek(tokens).type == TokenType::Null)
-      if (in_main) return;
+    if (peek(args.tokens).type == TokenType::Null)
+      if (in_main) {
+        if (!args.break_list.empty()) throw "SyntaxError: break not in loop";
+        if (!args.continue_list.empty()) throw "SyntaxError: continue not in loop";
+        return;
+      }
       else if (repl) throw 1;
       else throw "SyntaxError: '{' not closed, expect '}'";
-    if (peek(tokens).type != TokenType::Symbol) goto L2;
-    if (peek(tokens).val.sym == Symbol::Rbkl)
+
+    if (peek(args.tokens).type != TokenType::Symbol) L2: {
+      expr(args.tokens, args.output, 0, args.stacksize, args.maxstacksize);
+      if (peek(args.tokens).type == TokenType::Null)
+        if (in_main) {
+          if (!args.break_list.empty()) throw "SyntaxError: break not in loop";
+          if (!args.continue_list.empty()) throw "SyntaxError: continue not in loop";
+          return;
+        }
+        else if (repl) throw 1;
+        else throw "SyntaxError: '{' not closed, expect '}'";
+      if (peek(args.tokens).val.sym == Symbol::Eos)
+        while (peek(args.tokens).type == TokenType::Symbol && peek(args.tokens).val.sym == Symbol::Eos)
+          next(args.tokens);
+      else if (peek(args.tokens).val.sym != Symbol::Rbkl) throw "SyntaxError: bad operator";
+
+      if (args.output.back().type == OpType::Asg) args.output.back().type = OpType::AsgPop;
+      else args.output.emplace_back(OpType::Pop);
+      args.stacksize--;
+      continue;
+    }
+
+    switch (peek(args.tokens).val.sym) {
+    case Symbol::Rbkl:
       if (in_main) throw "SyntaxError: bad operator";
-      else {next(tokens); break;}
-    if (peek(tokens).val.sym == Symbol::Lbkl)
-      expr_stmt(tokens, output, stack_size, stack_max_size, false);
-    
-    else if (peek(tokens).val.sym == Symbol::If) {
+      next(args.tokens);
+      return;
+    case Symbol::Lbkl:
+      expr_stmt(args, true);
+      break;
+
+    case Symbol::Break:
+      next(args.tokens);
+      args.break_list.push_back(args.output.size());
+      args.output.emplace_back(OpType::Jmp);
+      break;
+    case Symbol::Continue:
+      next(args.tokens);
+      args.continue_list.push_back(args.output.size());
+      args.output.emplace_back(OpType::Jmp);
+      break;
+
+    case Symbol::Do: {
+      next(args.tokens);
+      size_t index = args.output.size();
+      expr_stmt(args);
+      for (size_t i : args.break_list)
+        args.output[i].val.size = args.output.size() - i;
+      args.break_list.clear();
+      for (size_t i : args.continue_list)
+        args.output[i].val.size = i - index;
+      args.continue_list.clear();
+      break;
+    }
+
+    case Symbol::If: {
       std::vector<size_t> jmps_to_end;
       L1:
-      next(tokens);
-      expr(tokens, output, 0, stack_size, stack_max_size);
-      size_t jmp_index = output.size();
-      output.emplace_back(OpType::Jiff);
-      stack_size--;
-      expr_stmt(tokens, output, stack_size, stack_max_size, false);
-      if (peek(tokens).type == TokenType::Symbol)
-      if (peek(tokens).val.sym == Symbol::Elif) {
-        jmps_to_end.push_back(output.size());
-        output.emplace_back(OpType::Jmp);
-        output[jmp_index].val.size = output.size() - jmp_index;
+      next(args.tokens);
+      expr(args.tokens, args.output, 0, args.stacksize, args.maxstacksize);
+      size_t jmp_index = args.output.size();
+      args.output.emplace_back(OpType::Jiff);
+      args.stacksize--;
+      expr_stmt(args);
+      if (peek(args.tokens).type == TokenType::Symbol)
+      if (peek(args.tokens).val.sym == Symbol::Elif) {
+        jmps_to_end.push_back(args.output.size());
+        args.output.emplace_back(OpType::Jmp);
+        args.output[jmp_index].val.size = args.output.size() - jmp_index;
         goto L1;
-      } else if (peek(tokens).val.sym == Symbol::Else) {
-        next(tokens);
-        jmps_to_end.push_back(output.size());
-        output.emplace_back(OpType::Jmp);
-        output[jmp_index].val.size = output.size() - jmp_index;
-        expr_stmt(tokens, output, stack_size, stack_max_size, false);
-      } else output[jmp_index].val.size = output.size() - jmp_index;
-      else output[jmp_index].val.size = output.size() - jmp_index;
+      } else if (peek(args.tokens).val.sym == Symbol::Else) {
+        next(args.tokens);
+        jmps_to_end.push_back(args.output.size());
+        args.output.emplace_back(OpType::Jmp);
+        args.output[jmp_index].val.size = args.output.size() - jmp_index;
+        expr_stmt(args);
+      } else args.output[jmp_index].val.size = args.output.size() - jmp_index;
+      else args.output[jmp_index].val.size = args.output.size() - jmp_index;
       for (size_t i : jmps_to_end)
-        output[i].val.size = output.size() - i;
+        args.output[i].val.size = args.output.size() - i;
     }
-    else if (peek(tokens).val.sym == Symbol::While) {
-      next(tokens);
+    break;
+
+    case Symbol::While: {
+      next(args.tokens);
+      size_t cond_index = args.output.size();
       std::vector<Op> cond;
-      size_t cond_index = output.size();
-      expr(tokens, cond, 0, stack_size, stack_max_size);
-      size_t body_index = output.size();
-      output.emplace_back(OpType::Jmp);
-      expr_stmt(tokens, output, stack_size, stack_max_size, false);
-      output[body_index].val.size = output.size() - body_index;
-      output.insert(output.end(), cond.begin(), cond.end());
-      output.emplace_back(OpType::Jift, cond_index - output.size() + 1);
-      stack_size--;
-    } else goto L2;
+      expr(args.tokens, cond, 0, args.stacksize, args.maxstacksize);
+      size_t body_index = args.output.size();
+      args.output.emplace_back(OpType::Jmp);
+      expr_stmt(args);
+      args.output[body_index].val.size = args.output.size() - body_index;
+      for (size_t i : args.continue_list)
+        args.output[i].val.size = args.output.size() - i;
+      args.continue_list.clear();
+      args.output.insert(args.output.end(), cond.begin(), cond.end());
+      args.output.emplace_back(OpType::Jift, cond_index - args.output.size() + 1);
+      args.stacksize--;
+      for (size_t i : args.break_list)
+        args.output[i].val.size = args.output.size() - i;
+      args.break_list.clear();
+    }
+    break;
 
-    if (peek(tokens).type == TokenType::Null)
-      if (in_main) return;
-      else if (repl) throw 1;
-      else throw "SyntaxError: '{' not closed, expect '}'";
-    while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
-    continue;
+    default: goto L2;
+    }
 
-    L2:
-    expr(tokens, output, 0, stack_size, stack_max_size);
-    if (peek(tokens).type == TokenType::Null)
-      if (in_main) return;
-      else if (repl) throw 1;
-      else throw "SyntaxError: '{' not closed, expect '}'";
-    if (peek(tokens).val.sym != Symbol::Rbkl && peek(tokens).val.sym != Symbol::Eos) throw "SyntaxError: bad operator";
-    while (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Eos) next(tokens);
-    if (output.back().type == OpType::Asg) output.back().type = OpType::AsgPop;
-    else output.emplace_back(OpType::Pop);
-    stack_size--;
+    while (peek(args.tokens).type == TokenType::Symbol && peek(args.tokens).val.sym == Symbol::Eos) next(args.tokens);
   }
 }
 
-void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, size_t& stack_size, size_t& stack_max_size) {
+void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, size_t& stacksize, size_t& maxstacksize) {
   Token token = next(tokens);
   switch (token.type) {
     case TokenType::Null:
@@ -165,13 +222,13 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
           output.emplace_back(token.val.atom.val.str);
           break;
       }
-      if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+      if (maxstacksize < ++stacksize) maxstacksize = stacksize;
       break;
 
     case TokenType::Symbol:
       switch (token.val.sym) {
         case Symbol::Lpar:
-          expr(tokens, output, 0, stack_size, stack_max_size);
+          expr(tokens, output, 0, stacksize, maxstacksize);
           if (peek(tokens).type == TokenType::Null)
             if (repl) throw 1;
             else throw "SyntaxError: '(' not closed, expect ')'";
@@ -185,7 +242,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
               next(tokens);
               break;
             }
-            expr(tokens, output, 0, stack_size, stack_max_size);
+            expr(tokens, output, 0, stacksize, maxstacksize);
             count++;
             Token token = next(tokens);
             if (token.type == TokenType::Null)
@@ -195,7 +252,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
             if (token.val.sym != Symbol::Sep) throw "SyntaxError: bad operator";
           }
           output.emplace_back(OpType::List, count);
-          if (stack_max_size < (stack_size += 1-count)) stack_max_size = stack_size;
+          if (maxstacksize < (stacksize += 1-count)) maxstacksize = stacksize;
           break;
         }
 
@@ -204,11 +261,11 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
           if (!bp) throw "SyntaxError: bad operator, expect prefix operator";
           if (token.val.sym == Symbol::Add || token.val.sym == Symbol::Sub) {
             output.emplace_back(0ll);
-            if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+            if (maxstacksize < ++stacksize) maxstacksize = stacksize;
           }
-          expr(tokens, output, bp&255, stack_size, stack_max_size);
+          expr(tokens, output, bp&255, stacksize, maxstacksize);
           output.emplace_back((OpType)(char)token.val.sym);
-          stack_size--;
+          stacksize--;
       }
       break;
 
@@ -223,11 +280,11 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
       }
       if (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Asg) {
         next(tokens);
-        expr(tokens, output, 0, stack_size, stack_max_size);
+        expr(tokens, output, 0, stacksize, maxstacksize);
         output.emplace_back(OpType::Asg, index);
       } else {
         output.emplace_back(OpType::Var, index);
-        if (stack_max_size < ++stack_size) stack_max_size = stack_size;
+        if (maxstacksize < ++stacksize) maxstacksize = stacksize;
       }
       break;
 
@@ -246,7 +303,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
             next(tokens);
             break;
           }
-          expr(tokens, output, 0, stack_size, stack_max_size);
+          expr(tokens, output, 0, stacksize, maxstacksize);
           count++;
           Token token = next(tokens);
           if (token.type == TokenType::Null)
@@ -256,36 +313,36 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
           if (token.val.sym != Symbol::Sep) throw "SyntaxError: bad operator";
         }
         output.emplace_back(OpType::Call, count);
-        stack_size -= count;
+        stacksize -= count;
         break;
       }
       case Symbol::Lbrk:
         next(tokens);
-        expr(tokens, output, 0, stack_size, stack_max_size);
+        expr(tokens, output, 0, stacksize, maxstacksize);
         if (peek(tokens).type == TokenType::Null)
           if (repl) throw 1;
           else throw "SyntaxError: '[' not closed, expect ']'";
         if (next(tokens).val.sym != Symbol::Rbrk) throw "SyntaxError: bad operator";
         // TODO: AsgInd
         output.emplace_back(OpType::Ind);
-        stack_size--;
+        stacksize--;
         break;
       case Symbol::Qst: {
         if (0 < min_bp) return;
         next(tokens);
         size_t index = output.size();
         output.emplace_back(OpType::Jiff);
-        stack_size--;
-        expr(tokens, output, 0, stack_size, stack_max_size);
+        stacksize--;
+        expr(tokens, output, 0, stacksize, maxstacksize);
         if (peek(tokens).type == TokenType::Null)
           if (repl) throw 1;
           else throw "SyntaxError: '?' not closed, expect ':'";
         size_t index2 = output.size();
         output.emplace_back(OpType::Jmp);
-        stack_size--;
+        stacksize--;
         output[index].val.size = output.size() - index;
         if (next(tokens).val.sym != Symbol::Cmn) throw "SyntaxError: bad operator";
-        expr(tokens, output, 0, stack_size, stack_max_size);
+        expr(tokens, output, 0, stacksize, maxstacksize);
         output[index2].val.size = output.size() - index2;
         break;
       }
@@ -297,14 +354,14 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
       if (token.val.sym == Symbol::Land || token.val.sym == Symbol::Lor) {
         size_t index = output.size();
         output.emplace_back(token.val.sym == Symbol::Land ? OpType::Land : OpType::Lor);
-        stack_size--;
-        expr(tokens, output, bp&255, stack_size, stack_max_size);
+        stacksize--;
+        expr(tokens, output, bp&255, stacksize, maxstacksize);
         output[index].val.size = output.size() - index;
         continue;
       }
-      expr(tokens, output, bp&255, stack_size, stack_max_size);
+      expr(tokens, output, bp&255, stacksize, maxstacksize);
       output.emplace_back((OpType)(char)token.val.sym);
-      stack_size--;
+      stacksize--;
     }
   }
 }
@@ -786,7 +843,7 @@ int main(int argc, char **argv) {
   char *filepath;
   if (argc > 1) {
     if (argv[1][0] == '-') if (argv[1][1] == 'h') {
-      std::cout << "Zemon Interpreter [v1.0.0]\nUsage: \n"
+      std::cout << "Zemon Interpreter [v1.0]\nUsage: \n"
       << argv[0] << "          - repl\n"
       << argv[0] << " -h       - help\n"
       << argv[0] << " file.zns - run file\n";
@@ -801,14 +858,13 @@ int main(int argc, char **argv) {
     }
     try {
       std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-      std::vector<Token> tokens = tokenize(str);
-      std::vector<Op> ops;
-      size_t stack_size = 0, stack_max_size = 0;
-      expr_stmt(tokens, ops, stack_size, stack_max_size, true);
-      ops.emplace_back(OpType::End);
+      expr_stmt_args args = {lex(str), std::vector<Op>(), 0, 0, std::vector<size_t>(), std::vector<size_t>()};
+      expr_stmt(args, true);
+
+      args.output.emplace_back(OpType::End);
       vars.resize(names.size());
-      Atom *stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
-      eval(ops, stack);
+      Atom *stack = (Atom *)malloc(args.maxstacksize * sizeof(Atom));
+      eval(args.output, stack);
       free(stack);
       return 0;
     }
@@ -819,19 +875,23 @@ int main(int argc, char **argv) {
   }
 
   repl = 1;
-  std::cout << "Zemon Interpreter [v1.0.0]\n";
+  std::cout << "Zemon Interpreter [v1.0]\n";
   std::string input;
   while (1) {
     std::cout << "> ";
     std::getline(std::cin, input);
+    expr_stmt_args args;
     try {
       L1:
-      std::vector<Token> tokens = tokenize(input);
-      if (tokens.empty()) continue;
-      std::vector<Op> ops;
-      size_t stack_size = 0, stack_max_size = 0;
+      args.tokens = lex(input);
+      if (args.tokens.empty()) continue;
+      args.output.clear();
+      args.stacksize = 0;
+      args.maxstacksize = 0;
+      args.continue_list.clear();
+      args.break_list.clear();
       try {
-        expr_stmt(tokens, ops, stack_size, stack_max_size, true);
+        expr_stmt(args, true);
       } catch (int) {
         std::string input2;
         std::cout << ". ";
@@ -839,16 +899,17 @@ int main(int argc, char **argv) {
         input += "\n" + input2;
         goto L1;
       }
-      ops.emplace_back(OpType::End);
+
+      args.output.emplace_back(OpType::End);
       vars.resize(names.size());
 
-      // for (Op& op : ops) std::cout << otos(op) << "\n";
-      // std::cout << "stack_size: " << stack_size << "\n";
-      // std::cout << "stack_max_size: " << stack_max_size << "\n";
+      for (Op& op : args.output) std::cout << otos(op) << "\n";
+      // std::cout << "stacksize: " << args.stacksize << "\n";
+      // std::cout << "maxstacksize: " << args.maxstacksize << "\n";
 
-      Atom *stack = stack = (Atom *)malloc(stack_max_size * sizeof(Atom));
-      eval(ops, stack);
-      if (stack_size) {
+      Atom *stack = (Atom *)malloc(args.maxstacksize * sizeof(Atom));
+      eval(args.output, stack);
+      if (args.stacksize) {
         std::cout << "= " << arepl(*stack) << "\n";
         stack->~Atom();
       }

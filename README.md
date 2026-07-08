@@ -19,7 +19,10 @@ zn          # 启动交互式REPL
 zn file.zns # 运行脚本文件
 ```
 
-> 在线体验: https://zn-std.netlify.app
+> 在线体验
+> - https://3-1415f.github.io/zemon-web
+> - https://zn-std.netlify.app
+> - https://zemon.edgeone.dev
 
 ### 示例
 
