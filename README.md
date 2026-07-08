@@ -19,7 +19,7 @@ zn          # 启动交互式REPL
 zn file.zns # 运行脚本文件
 ```
 
-> 在线体验
+> ZemonScript 在线体验
 > - https://3-1415f.github.io/zemon-web
 > - https://zn-std.netlify.app
 > - https://zemon.edgeone.dev
@@ -41,7 +41,7 @@ arr = [3.14159, pi + pi, pi * 3, pi * (2 + 2),
 first = arr[0];
 
 // 函数
-x = input("Enter x: ");
+x = float(input("enter x: "));
 outln("sin(x) = ", sin(x));
 
 // 条件语句
@@ -56,10 +56,11 @@ if x > 10 {
 // 循环
 i = 0;
 while i < 10 {
-    out(str(i) + ", ");
+    outln(i);
     i = i + 1;
 }
 ```
+> [查看更多示例](examples)
 
 <details>
 <summary><b>数据类型</b></summary>
@@ -73,7 +74,7 @@ while i < 10 {
   <tr><td><code>function</code></td><td>函数</td></tr>
 </table>
 
-- 使用 `type(val)` 函数获取变量类型
+> 使用 `type(val)` 函数获取变量类型
 
 </details>
 

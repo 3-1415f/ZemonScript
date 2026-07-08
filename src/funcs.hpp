@@ -19,6 +19,18 @@ void f_int(size_t argc, Atom* atoms) {
   atoms[-1].type = AtomType::I64;
   atoms[-1].val.i64 = atoi(*atoms);
 }
+void f_float(size_t argc, Atom* atoms) {
+  if (argc != 1) throw "ArgError: expect 1 argument";
+  atoms[-1].type = AtomType::F64;
+  if (atoms->type == AtomType::I64) {
+    atoms[-1].val.f64 = atoms->val.i64;
+  } else if (atoms->type == AtomType::F64) {
+    atoms[-1].val.f64 = atoms->val.f64;
+  } else if (atoms->type == AtomType::Str) {
+    atoms[-1].val.f64 = atof(atoms->val.str.c_str());
+    atoms->val.str.std::string::~string();
+  }
+}
 void f_str(size_t argc, Atom* atoms) {
   if (argc != 1) throw "ArgError: expect 1 argument";
   atoms[-1].type = AtomType::Str;

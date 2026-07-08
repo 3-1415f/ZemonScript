@@ -1,0 +1,17 @@
+num = int(input("enter a number: "));
+
+if num > 1 {
+  i = 2;
+  while i*i <= num {
+    if (num % i) == 0 {
+      outln(num, " is not a prime number");
+      outln(i, " times ", num / i, " equals to ", num);
+      break;
+    }
+    i = i + 1;
+  } else {
+    outln(num, " is a prime number");
+  }
+} else {
+  outln(num, "is not a prime number");
+}

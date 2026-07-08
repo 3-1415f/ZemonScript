@@ -187,6 +187,10 @@ void expr_stmt(expr_stmt_args& args, bool in_main = false) {
       args.output.insert(args.output.end(), cond.begin(), cond.end());
       args.output.emplace_back(OpType::Jift, cond_index - args.output.size() + 1);
       args.stacksize--;
+      if (peek(args.tokens).type == TokenType::Symbol && peek(args.tokens).val.sym == Symbol::Else) {
+        next(args.tokens);
+        expr_stmt(args);
+      }
       for (size_t i : args.break_list)
         args.output[i].val.size = args.output.size() - i;
       args.break_list.clear();
@@ -597,7 +601,8 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
           else if (b.type == AtomType::F64)
             a.val.f64 += b.val.f64;
           else {err = "TypeError: bad value type for operator '+'"; goto E1;}
-        else if (a.type == AtomType::Str && b.type == AtomType::Str) {a.val.str += b.val.str;
+        else if (a.type == AtomType::Str && b.type == AtomType::Str) {
+          a.val.str += b.val.str;
           b.val.str.std::string::~string();
         }
         else if (a.type == AtomType::List && b.type == AtomType::List) {
@@ -903,9 +908,9 @@ int main(int argc, char **argv) {
       args.output.emplace_back(OpType::End);
       vars.resize(names.size());
 
+      #ifdef DEBUG
       for (Op& op : args.output) std::cout << otos(op) << "\n";
-      // std::cout << "stacksize: " << args.stacksize << "\n";
-      // std::cout << "maxstacksize: " << args.maxstacksize << "\n";
+      #endif
 
       Atom *stack = (Atom *)malloc(args.maxstacksize * sizeof(Atom));
       eval(args.output, stack);
