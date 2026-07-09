@@ -57,7 +57,8 @@ short infix(Symbol op) {
   }
 }
 
-std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "str", "type", "repl", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
+std::vector<std::string> const_str = {};
+std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "float", "str", "type", "repl", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
 
 void expr(std::vector<Token>& tokens, std::vector<Op>& output, short expr_bp, size_t& stacksize, size_t& maxstacksize);
 
@@ -117,7 +118,7 @@ void expr_stmt(expr_stmt_args& args, bool in_main = false) {
       next(args.tokens);
       return;
     case Symbol::Lbkl:
-      expr_stmt(args, true);
+      expr_stmt(args);
       break;
 
     case Symbol::Break:
@@ -222,9 +223,16 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
         case AtomType::F64:
           output.emplace_back(token.val.atom.val.f64);
           break;
-        case AtomType::Str:
-          output.emplace_back(token.val.atom.val.str);
+        case AtomType::Str: {
+          auto it = std::find(const_str.begin(), const_str.end(), token.val.atom.val.str);
+          if (it != const_str.end())
+            output.emplace_back(OpType::Str, it - const_str.begin());
+          else {
+            output.emplace_back(OpType::Str, const_str.size());
+            const_str.push_back(token.val.atom.val.str);
+          }
           break;
+        }
       }
       if (maxstacksize < ++stacksize) maxstacksize = stacksize;
       break;
@@ -279,8 +287,8 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
       if (it != names.end())
         index = it - names.begin();
       else {
+        index = names.size();
         names.emplace_back(token.val.id);
-        index = names.size() - 1;
       }
       if (peek(tokens).type == TokenType::Symbol && peek(tokens).val.sym == Symbol::Asg) {
         next(tokens);
@@ -370,7 +378,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
   }
 }
 
-std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_str, f_type, f_repl, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
+std::vector<Atom> vars = {f_exit, f_out, f_outln, f_input, f_bool, f_int, f_float, f_str, f_type, f_repl, f_clock, f_sleep, 3.1415926, 2.7182818, f_sin, f_cos, f_tan, f_asin, f_acos, f_atan};
 
 void eval(const std::vector<Op>& ops, Atom *stack) {
   Atom *pvar = &vars[0];
@@ -398,7 +406,7 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
         break;
       case OpType::Str:
         top->type = AtomType::Str;
-        new (&top++->val.str) std::string(cmd.val.str);
+        new (&top++->val.str) std::string(const_str[cmd.val.usize]);
         break;
 
       case OpType::Var:
@@ -844,6 +852,51 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
   throw err;
 }
 
+#ifdef ZN_DEBUG
+std::string otos(Op op) {
+  switch (op.type) {
+    case OpType::Bnot: return "~";
+    case OpType::Lnot: return "!";
+    case OpType::Add: return "+";
+    case OpType::Sub: return "-";
+    case OpType::Mul: return "*";
+    case OpType::Div: return "/";
+    case OpType::Mod: return "%";
+    case OpType::Pow: return "**";
+    case OpType::Shl: return "<<";
+    case OpType::Shr: return ">>";
+    case OpType::Lt: return "<";
+    case OpType::Le: return "<=";
+    case OpType::Gt: return ">";
+    case OpType::Ge: return ">=";
+    case OpType::Ne: return "!=";
+    case OpType::Eq: return "==";
+    case OpType::Band: return "&";
+    case OpType::Bxor: return "^";
+    case OpType::Bor: return "|";
+    case OpType::Ind: return "[]";
+    case OpType::AsgInd: return "[]=";
+    case OpType::End: return "END";
+    case OpType::Pop: return "POP";
+    case OpType::Null: return "null";
+    case OpType::Str: return const_str[op.val.usize];
+    case OpType::I64: return std::to_string(op.val.i64);
+    case OpType::F64: return ftos(op.val.f64);
+    case OpType::Var: return names[op.val.usize];
+    case OpType::Asg: return "=" + names[op.val.usize];
+    case OpType::AsgPop: return "=" + names[op.val.usize] + "&POP";
+    case OpType::Call: return "CALL," + std::to_string(op.val.usize);
+    case OpType::List: return "LIST," + std::to_string(op.val.usize);
+    case OpType::Jmp: return "JMP," + std::to_string(op.val.size);
+    case OpType::Jift: return "JIFT," + std::to_string(op.val.size);
+    case OpType::Jiff: return "JIFF," + std::to_string(op.val.size);
+    case OpType::Land: return "&&," + std::to_string(op.val.size);
+    case OpType::Lor: return "||," + std::to_string(op.val.size);
+  }
+  return "";
+}
+#endif
+
 int main(int argc, char **argv) {
   char *filepath;
   if (argc > 1) {
@@ -886,6 +939,7 @@ int main(int argc, char **argv) {
     std::cout << "> ";
     std::getline(std::cin, input);
     expr_stmt_args args;
+    const_str.clear();
     try {
       L1:
       args.tokens = lex(input);
@@ -908,7 +962,7 @@ int main(int argc, char **argv) {
       args.output.emplace_back(OpType::End);
       vars.resize(names.size());
 
-      #ifdef DEBUG
+      #ifdef ZN_DEBUG
       for (Op& op : args.output) std::cout << otos(op) << "\n";
       #endif
 

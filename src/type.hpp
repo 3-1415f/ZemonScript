@@ -104,46 +104,4 @@ std::string atos(Atom atom) {
   return "";
 }
 
-std::string otos(Op op) {
-  switch (op.type) {
-    case OpType::Bnot: return "~";
-    case OpType::Lnot: return "!";
-    case OpType::Add: return "+";
-    case OpType::Sub: return "-";
-    case OpType::Mul: return "*";
-    case OpType::Div: return "/";
-    case OpType::Mod: return "%";
-    case OpType::Pow: return "**";
-    case OpType::Shl: return "<<";
-    case OpType::Shr: return ">>";
-    case OpType::Lt: return "<";
-    case OpType::Le: return "<=";
-    case OpType::Gt: return ">";
-    case OpType::Ge: return ">=";
-    case OpType::Ne: return "!=";
-    case OpType::Eq: return "==";
-    case OpType::Band: return "&";
-    case OpType::Bxor: return "^";
-    case OpType::Bor: return "|";
-    case OpType::Ind: return "[]";
-    case OpType::AsgInd: return "[]=";
-    case OpType::End: return "END";
-    case OpType::Pop: return "POP";
-    case OpType::Null: return "null";
-    case OpType::Str: return op.val.str;
-    case OpType::I64: return std::to_string(op.val.i64);
-    case OpType::F64: return ftos(op.val.f64);
-    case OpType::Var: return '#' + std::to_string(op.val.usize);
-    case OpType::Asg: return "=#" + std::to_string(op.val.usize);
-    case OpType::Call: return "CALL," + std::to_string(op.val.usize);
-    case OpType::List: return "LIST," + std::to_string(op.val.usize);
-    case OpType::Jmp: return "JMP," + std::to_string(op.val.size);
-    case OpType::Jift: return "JIFT," + std::to_string(op.val.size);
-    case OpType::Jiff: return "JIFF," + std::to_string(op.val.size);
-    case OpType::Land: return "&&," + std::to_string(op.val.size);
-    case OpType::Lor: return "||," + std::to_string(op.val.size);
-  }
-  return "";
-}
-
 #endif
