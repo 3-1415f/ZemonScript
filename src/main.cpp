@@ -394,24 +394,29 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
         break;
 
       case OpType::Null:
-        (top++)->type = AtomType::Null;
+        top->type = AtomType::Null;
+        top++;
         break;
       case OpType::I64:
         top->type = AtomType::I64;
-        (top++)->val.i64 = cmd.val.i64;
+        top->val.i64 = cmd.val.i64;
+        top++;
         break;
       case OpType::F64:
         top->type = AtomType::F64;
-        (top++)->val.f64 = cmd.val.f64;
+        top->val.f64 = cmd.val.f64;
+        top++;
         break;
       case OpType::Str:
         top->type = AtomType::Str;
-        new (&top++->val.str) std::string(const_str[cmd.val.usize]);
+        new (&top->val.str) std::string(const_str[cmd.val.usize]);
+        top++;
         break;
 
       case OpType::Var:
         if (pvar[cmd.val.usize].type == AtomType::None) {err = "NameError: variable not found"; goto E2;}
-        new (top++) Atom(pvar[cmd.val.usize]);
+        new (&top) Atom(pvar[cmd.val.usize]);
+        top++;
         break;
       case OpType::Asg:
         pvar[cmd.val.usize] = top[-1];
@@ -423,8 +428,8 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
 
       case OpType::Call: {
         Atom *atom = top - cmd.val.usize;
-        if ((atom-1)->type != AtomType::StdFn) {err = "TypeError: bad value type for function call"; goto E2;}
-        (atom-1)->val.stdfn(cmd.val.usize, atom);
+        if (atom[-1].type != AtomType::StdFn) {err = "TypeError: bad value type for function call"; goto E2;}
+        atom[-1].val.stdfn(cmd.val.usize, atom);
         for (Atom *a = atom; a != top; a++) a->~Atom();
         top = atom;
         break;
@@ -434,7 +439,8 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
         std::move(top - cmd.val.usize, top, std::back_inserter(list));
         for (Atom *a = top - cmd.val.usize; a != top; a++) a->~Atom();
         top = top - cmd.val.usize;
-        new (top++) Atom(std::move(list));
+        new (top) Atom(std::move(list));
+        top++;
         break;
       }
       case OpType::Jmp:
@@ -443,13 +449,15 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
       case OpType::Jift:
         --top;
         if (top->type == AtomType::I64) {
-          if (!top->val.i64) break;
-          pcmd += cmd.val.size;
-          continue;
+          if (top->val.i64) {
+            pcmd += cmd.val.size;
+            continue;
+          }
+          break;
         }
         if (atob(*top)) {
-          pcmd += cmd.val.size;
           top->~Atom();
+          pcmd += cmd.val.size;
           continue;
         }
         top->~Atom();
@@ -506,8 +514,8 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
         break;
       }
       case OpType::Bnot: {
-        Atom* a = top - 1;
-        if (a->type == AtomType::I64) a->val.i64 = ~a->val.i64;
+        Atom& a = top[-1];
+        if (a.type == AtomType::I64) a.val.i64 = ~a.val.i64;
         else {err = "TypeError: bad value type for operator '~'"; goto E2;}
         break;
       }
