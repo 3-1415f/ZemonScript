@@ -902,7 +902,7 @@ int main(int argc, char **argv) {
   char *filepath;
   if (argc > 1) {
     if (argv[1][0] == '-') if (argv[1][1] == 'h') {
-      std::cout << "Zemon Interpreter [v1.0]\nUsage: \n"
+      std::cout << "Zemon Interpreter [v1.1]\nUsage: \n"
       << argv[0] << "          - repl\n"
       << argv[0] << " -h       - help\n"
       << argv[0] << " file.zns - run file\n";
@@ -934,7 +934,7 @@ int main(int argc, char **argv) {
   }
 
   repl = 1;
-  std::cout << "Zemon Interpreter [v1.0]\n";
+  std::cout << "Zemon Interpreter [v1.1]\n";
   std::string input;
   while (1) {
     std::cout << "> ";
