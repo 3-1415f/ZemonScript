@@ -57,7 +57,6 @@ short infix(Symbol op) {
   }
 }
 
-std::vector<std::string> const_str = {};
 std::vector<std::string> names = {"exit", "out", "outln", "input", "bool", "int", "float", "str", "type", "repl", "clock", "sleep", "pi", "e", "sin", "cos", "tan", "asin", "acos", "atan"};
 
 void expr(std::vector<Token>& tokens, std::vector<Op>& output, short expr_bp, size_t& stacksize, size_t& maxstacksize);
@@ -224,13 +223,7 @@ void expr(std::vector<Token>& tokens, std::vector<Op>& output, short min_bp, siz
           output.emplace_back(token.val.atom.val.f64);
           break;
         case AtomType::Str: {
-          auto it = std::find(const_str.begin(), const_str.end(), token.val.atom.val.str);
-          if (it != const_str.end())
-            output.emplace_back(OpType::Str, it - const_str.begin());
-          else {
-            output.emplace_back(OpType::Str, const_str.size());
-            const_str.push_back(token.val.atom.val.str);
-          }
+          output.emplace_back(token.val.atom.val.str);
           break;
         }
       }
@@ -409,13 +402,13 @@ void eval(const std::vector<Op>& ops, Atom *stack) {
         break;
       case OpType::Str:
         top->type = AtomType::Str;
-        new (&top->val.str) std::string(const_str[cmd.val.usize]);
+        new (&top->val.str) std::string(cmd.val.str);
         top++;
         break;
 
       case OpType::Var:
         if (pvar[cmd.val.usize].type == AtomType::None) {err = "NameError: variable not found"; goto E2;}
-        new (&top) Atom(pvar[cmd.val.usize]);
+        new (top) Atom(pvar[cmd.val.usize]);
         top++;
         break;
       case OpType::Asg:
@@ -947,7 +940,6 @@ int main(int argc, char **argv) {
     std::cout << "> ";
     std::getline(std::cin, input);
     expr_stmt_args args;
-    const_str.clear();
     try {
       L1:
       args.tokens = lex(input);

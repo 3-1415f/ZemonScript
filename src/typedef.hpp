@@ -209,44 +209,44 @@ struct Op {
   union Val {
     long long i64;
     double f64;
+    std::string str;
     size_t usize;
     ssize_t size;
     Val() {}
     ~Val() {}
   } val;
   Op(const Op& o) noexcept : type(o.type) {
-    // if (type == OpType::Str)
-    //   val.usize = o.val.usize;
-    // else if (type == OpType::I64)
-    //   val.i64 = o.val.i64;
-    // else if (type == OpType::F64)
-    //   val.f64 = o.val.f64;
-    // else if (type >= OpType::Var && type <= OpType::List)
-    //   val.usize = o.val.usize;
-    // else if (type >= OpType::Jmp && type <= OpType::Lor)
-    //   val.size = o.val.size;
-    val.i64 = o.val.i64;
+    if (type == OpType::Str)
+      new (&val.str) std::string(o.val.str);
+    else if (type == OpType::I64)
+      val.i64 = o.val.i64;
+    else if (type == OpType::F64)
+      val.f64 = o.val.f64;
+    else if (type >= OpType::Var && type <= OpType::List)
+      val.usize = o.val.usize;
+    else if (type >= OpType::Jmp && type <= OpType::Lor)
+      val.size = o.val.size;
   }
   Op& operator=(const Op& o) noexcept {
     if (this == &o) return *this;
     type = o.type;
-    val.i64 = o.val.i64;
-    // if (type == OpType::Str)
-    //   val.usize = o.val.usize;
-    // else if (type == OpType::I64)
-    //   val.i64 = o.val.i64;
-    // else if (type == OpType::F64)
-    //   val.f64 = o.val.f64;
-    // else if (type >= OpType::Var && type <= OpType::List)
-    //   val.usize = o.val.usize;
-    // else if (type >= OpType::Jmp && type <= OpType::Lor)
-    //   val.size = o.val.size;
+    if (type == OpType::Str)
+      new (&val.str) std::string(o.val.str);
+    else if (type == OpType::I64)
+      val.i64 = o.val.i64;
+    else if (type == OpType::F64)
+      val.f64 = o.val.f64;
+    else if (type >= OpType::Var && type <= OpType::List)
+      val.usize = o.val.usize;
+    else if (type >= OpType::Jmp && type <= OpType::Lor)
+      val.size = o.val.size;
     return *this;
   }
   ~Op() noexcept {}
   Op(OpType type) noexcept : type(type) {}
   Op(long long i64) noexcept : type(OpType::I64) { val.i64 = i64; }
   Op(double f64) noexcept : type(OpType::F64) { val.f64 = f64; }
+  Op(const std::string& str) noexcept : type(OpType::Str) { new (&val.str) std::string(str); }
   Op(OpType type, size_t usize) noexcept : type(type) { val.usize = usize; }
   Op(OpType type, ssize_t size) noexcept : type(type) { val.size = size; }
 };
