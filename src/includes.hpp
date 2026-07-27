@@ -1,6 +1,7 @@
 #ifndef ZN_INCLUDES_HPP
 #define ZN_INCLUDES_HPP
 
+#include <cstddef>
 #include <cmath>
 #include <string>
 #include <sstream>
@@ -11,6 +12,10 @@
 #include <chrono>
 #include <thread>
 #include <iomanip>
+
+#ifndef ssize_t
+typedef ptrdiff_t ssize_t;
+#endif
 
 #include "typedef.hpp"
 #include "lexer.hpp"

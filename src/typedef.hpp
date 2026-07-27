@@ -3,7 +3,23 @@
 
 #include "includes.hpp"
 
-enum class Symbol : char {
+struct Atom;
+struct Op;
+
+typedef void (*ZnStdFn)(size_t, Atom*);
+
+/*
+struct Fn {
+  size_t argc;
+  size_t *pargv;
+  Op *pops;
+  size_t refc;
+  std::vector<size_t> argv;
+  std::vector<Op> ops;
+};
+*/
+
+enum class Symbol {
   Lnot, Bnot,
   Pow,
   Mul, Div, Mod,
@@ -15,9 +31,10 @@ enum class Symbol : char {
   Lpar, Rpar, Lbrk, Rbrk, Lbkl, Rbkl,
   Sep, Eos, Asg, Cmn, Qst,
   Do, If, Elif, Else, While, Break, Continue,
+  Fn, Return, Local,
 };
 
-enum class OpType : char {
+enum class OpType {
   Lnot, Bnot,
   Pow, Mul, Div, Mod, Add, Sub,
   Shl, Shr,
@@ -29,10 +46,7 @@ enum class OpType : char {
   Var, Asg, AsgPop, Call, List, Jmp, Jift, Jiff, Land, Lor
 };
 
-enum class AtomType : char  { None, Null, I64, F64, Str, List, StdFn };
-typedef struct Atom Atom;
-typedef void (*ZnStdFn)(size_t, Atom*);
-
+enum class AtomType { None, Null, I64, F64, Str, List, StdFn, /* Fn */ };
 struct Atom {
   AtomType type;
   union Val {
@@ -41,6 +55,7 @@ struct Atom {
     std::string str;
     std::vector<Atom> list;
     ZnStdFn stdfn;
+    // Fn *fn;
     Val() {}
     ~Val() {}
   } val;
@@ -56,6 +71,10 @@ struct Atom {
       new (&val.list) std::vector<Atom>(a.val.list);
     else if (a.type == AtomType::StdFn)
       val.stdfn = a.val.stdfn;
+    // else if (a.type == AtomType::Fn) {
+    //   val.fn = a.val.fn;
+    //   val.fn->refc++;
+    // }
     else type = AtomType::Null;
   }
 
@@ -70,6 +89,8 @@ struct Atom {
       new (&val.list) std::vector<Atom>(std::move(a.val.list));
     else if (a.type == AtomType::StdFn)
       val.stdfn = a.val.stdfn;
+    // else if (a.type == AtomType::Fn)
+    //   val.fn = a.val.fn;
     else type = AtomType::Null;
   }
 
@@ -80,6 +101,13 @@ struct Atom {
       val.str.std::string::~string();
     else if (type == AtomType::List)
       val.list.std::vector<Atom>::~vector();
+    // else if (type == AtomType::Fn) {
+    //   val.fn->refc--;
+    //   if (val.fn->refc == 0) {
+    //     val.fn->argv.std::vector<size_t>::~vector();
+    //     val.fn->ops.std::vector<Op>::~vector();
+    //   }
+    // }
 
     type = a.type;
     if (type == AtomType::I64)
@@ -92,6 +120,10 @@ struct Atom {
       new (&val.list) std::vector<Atom>(a.val.list);
     else if (type == AtomType::StdFn)
       val.stdfn = a.val.stdfn;
+    // else if (type == AtomType::Fn) {
+    //   val.fn = a.val.fn;
+    //   val.fn->refc++;
+    // }
     else type = AtomType::Null;
 
     return *this;
@@ -104,6 +136,12 @@ struct Atom {
       val.str.std::string::~string();
     else if (type == AtomType::List)
       val.list.std::vector<Atom>::~vector();
+    // else if (type == AtomType::Fn) {
+    //   if (--val.fn->refc == 0) {
+    //     val.fn->argv.std::vector<size_t>::~vector();
+    //     val.fn->ops.std::vector<Op>::~vector();
+    //   }
+    // }
 
     type = a.type;
     if (type == AtomType::I64)
@@ -116,6 +154,8 @@ struct Atom {
       new (&val.list) std::vector<Atom>(std::move(a.val.list));
     else if (type == AtomType::StdFn)
       val.stdfn = a.val.stdfn;
+    // else if (type == AtomType::Fn)
+    //   val.fn = a.val.fn;
     else type = AtomType::Null;
 
     return *this;
@@ -126,6 +166,12 @@ struct Atom {
       val.str.std::string::~string();
     else if (type == AtomType::List)
       val.list.std::vector<Atom>::~vector();
+    // else if (type == AtomType::Fn) {
+    //   if (--val.fn->refc == 0) {
+    //     val.fn->argv.std::vector<size_t>::~vector();
+    //     val.fn->ops.std::vector<Op>::~vector();
+    //   }
+    // }
   }
 
   Atom() noexcept : type(AtomType::None) {val.i64 = 0;}
@@ -135,11 +181,12 @@ struct Atom {
   Atom(const std::string& v) noexcept : type(AtomType::Str) { new (&val.str) std::string(v); }
   Atom(const std::vector<Atom>& v) noexcept : type(AtomType::List) { new (&val.list) std::vector<Atom>(v); }
   Atom(ZnStdFn v) noexcept : type(AtomType::StdFn) { val.stdfn = v; }
+  // Atom(Fn *v) noexcept : type(AtomType::Fn) { val.fn = v; v->refc++; }
 };
 
-enum class TokenType : char  { Null, Atom, Symbol, Id };
+enum class TokenType { Null, Atom, Symbol, Id };
 struct Token {
-  enum TokenType type;
+  TokenType type;
   union Val {
     Atom atom;
     Symbol sym;

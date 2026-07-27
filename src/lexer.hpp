@@ -95,6 +95,9 @@ std::vector<Token> lex(const std::string& input) {
       else if (s == "while") tokens.emplace_back(Symbol::While);
       else if (s == "break") tokens.emplace_back(Symbol::Break);
       else if (s == "continue") tokens.emplace_back(Symbol::Continue);
+      else if (s == "fn") tokens.emplace_back(Symbol::Fn);
+      else if (s == "return") tokens.emplace_back(Symbol::Return);
+      else if (s == "local") tokens.emplace_back(Symbol::Local);
       else tokens.emplace_back(s);
     } else switch (c) {
       case '/':

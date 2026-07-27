@@ -21,8 +21,8 @@ zn file.zns # 运行脚本文件
 
 > ZemonScript 在线体验
 > - https://3-1415f.github.io/zemon-web
-> - https://zn-std.netlify.app
-> - https://zemon.edgeone.dev
+> - https://zemon.znstd.dpdns.org
+> - https://zemon.netlify.app
 
 ### 示例
 
